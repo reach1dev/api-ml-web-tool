@@ -5,12 +5,15 @@ import pandas as pd
 import numpy as np
 import json
 import sys
-
+from flask_cors import CORS, cross_origin
 from sklearn import preprocessing
 
 app = Flask(__name__)
+cors = CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
 
 input_data = []
+
 
 def default(obj):
     if type(obj).__module__ == np.__name__:
@@ -39,7 +42,9 @@ def transform_data(input_data, transform):
         return output_data
     return input_data
 
+
 @app.route('/get-transform-data', methods=['POST'])
+@cross_origin()
 def get_transform_data():
     global input_data
     transforms = request.json['transforms']
@@ -54,7 +59,9 @@ def get_transform_data():
             output_data = transform_data(output_data, transform)
     return json.dumps([last_input_data, output_data], default=default)
 
+
 @app.route('/upload-input-data', methods=['POST'])
+@cross_origin()
 def upload_input_data():
     global input_data
     file = request.files['file']
