@@ -10,7 +10,7 @@ from sklearn import preprocessing
 
 app = Flask(__name__)
 cors = CORS(app)
-app.config['CORS_HEADERS'] = 'Content-Type'
+# app.config['CORS_HEADERS'] = 'Content-Type'
 
 input_data = []
 
@@ -44,7 +44,7 @@ def transform_data(input_data, transform):
 
 
 @app.route('/get-transform-data', methods=['POST'])
-@cross_origin()
+# @cross_origin()
 def get_transform_data():
     global input_data
     transforms = request.json['transforms']
@@ -61,7 +61,7 @@ def get_transform_data():
 
 
 @app.route('/upload-input-data', methods=['POST'])
-@cross_origin()
+# @cross_origin()
 def upload_input_data():
     global input_data
     file = request.files['file']
