@@ -66,5 +66,3 @@ def upload_input_data():
     if engine.upload_input_file(file):
         return '', 200
     return '', 400
-
-app.run('0.0.0.0')
