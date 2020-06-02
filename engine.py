@@ -5,7 +5,6 @@ import sys
 from flask_cors import CORS, cross_origin
 from sklearn import preprocessing
 from sklearn.cluster import KMeans
-import matplotlib.pyplot as plt
 from datetime import datetime
 
 
@@ -48,12 +47,9 @@ def do_transforms(transform, df):
 
 def do_rolling(roll_from, roll_to, roll_space, X):
   Y = np.empty((X.shape[0], 0))
-  # plt.plot(X[:, [i==0 for i in range(0, 6)]])
   for roll in range(roll_from, roll_to):
     X1 = np.roll(X, roll*roll_space, axis=0)
-    # plt.plot(X1[:, [i==0 for i in range(0, 6)]])
     Y = np.concatenate((Y, X1), axis=1)
-  # plt.show()
   return Y
 
 def train(transforms, parameters):
@@ -74,7 +70,6 @@ def train(transforms, parameters):
 
   df_train = df[df.index <= 4620]
   df_test = df[df.index > 4620]
-  # test_features = all_features[train_len+1:, :]
 
   k = parameters['n_clusters']
   k_means = KMeans(n_clusters=k).fit(df_train)
