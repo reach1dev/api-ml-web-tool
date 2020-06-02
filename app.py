@@ -7,20 +7,14 @@ import json
 import sys
 from flask_cors import CORS, cross_origin
 from sklearn import preprocessing
+from sklearn.cluster import KMeans
+import engine
 
 app = Flask(__name__)
 cors = CORS(app)
-# app.config['CORS_HEADERS'] = 'Content-Type'
+
 
 input_data = []
-
-
-# @app.after_request
-# def after_request(response):
-#     response.headers.add('Access-Control-Allow-Origin', '*')
-#     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-#     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-#     return response
 
 
 def default(obj):
@@ -32,52 +26,45 @@ def default(obj):
     raise TypeError('Unknown type:', type(obj))
 
 
-def transform_data(input_data, transform):
-    if transform['tool']['id'] == 101:
-        inputFilters = transform['inputFilters']
-        if inputFilters is not None:
-            for i in range(0, len(inputFilters)):
-                if i < 2:
-                    inputFilters[i] = False
-            selections = np.array(inputFilters)
-        else:
-            selections = np.array([False, False, True, True, True, True, True, True])
-        x = input_data[:, selections].T
-        parameters = transform['parameters']
-        minmax_scale = preprocessing.MinMaxScaler(feature_range=(parameters['min'], parameters['max'])).fit(x.T)
-        x=minmax_scale.transform(x.T).T
-        output_data = np.concatenate((input_data[:, :2], x.T), axis=1)
-        return output_data
-    return input_data
-
-
 @app.route('/get-transform-data', methods=['POST'])
-# @cross_origin()
 def get_transform_data():
-    global input_data
+    df = engine.copy_dataframe()
     transforms = request.json['transforms']
     output_data = None
     last_input_data = None
     for transform in transforms:
-        print(transform['id'])
         if transform['id'] == 1000:
-            output_data = input_data
-        else:
-            last_input_data = output_data
-            output_data = transform_data(output_data, transform)
+            output_data = df
+        elif transform['tool']['id'] == 101:
+            last_input_data = output_data.copy()
+            output_data = engine.normalize_dataframe(output_data, transform['outputParameters'], transform['parameters']['rolling'])
+    
+    if last_input_data is not None:
+        last_input_data = last_input_data.to_numpy()
+        sel = [i%50==0 for i in range(len(last_input_data))]
+        last_input_data = last_input_data[sel]
+    if output_data is not None:
+        output_data = output_data.to_numpy()
+        sel = [i%50==0 for i in range(len(output_data))]
+        output_data = output_data[sel]
     return json.dumps([last_input_data, output_data], default=default)
 
 
+@app.route('/train-and-test', methods=['POST'])
+def train_and_test():
+    transforms = request.json['transforms']
+    parameters = request.json['parameters']
+    
+    [graph, metrics] = engine.train(transforms, parameters)
+    return json.dumps([graph, metrics], default=default)
+
+
 @app.route('/upload-input-data', methods=['POST'])
-# @cross_origin()
 def upload_input_data():
     global input_data
     file = request.files['file']
-    try:
-        input_file = pd.read_csv (file)
-        input_data = input_file.to_numpy()
-    except:
-        e = sys.exc_info()[0]
-        print (e)
-        return 'invalid file or data', 400
-    return '', 200
+    if engine.upload_input_file(file):
+        return '', 200
+    return '', 400
+
+app.run('0.0.0.0')
