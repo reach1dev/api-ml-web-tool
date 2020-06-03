@@ -11,27 +11,16 @@ from datetime import datetime
 input_file = None
 input_data = None
 
-def get_input_data(data_only = True):
-  global input_data
-  if data_only:
-    return input_data[:, [(i>=2) for i in range(0, 8)]]
-  return input_data
-
-
-def get_with_headers(x):
-  global input_data
-  print(input_data)
-  return np.concatenate((input_data[:, :2], x), axis=1)
-
-def append_feature(Y, Z):
-  return np.concatenate((Y, Z), axis=1)
-
 
 def transform_data(X0, transform):
-    if transform['tool']['id'] == 101:
-      params = transform['parameters']
-      return normalize_dataframe(X0, transform['outputParameters'], params['rolling'], params['min'], params['max'])
-    return X0
+  tool = transform['tool']['id']
+  if tool == 101:
+    params = transform['parameters']
+    return normalize_dataframe(X0, transform['outputParameters'], params['rolling'], params['min'], params['max'])
+  elif tool == 102:
+    params = transform['parameters']
+    return standard_dataframe(X0, transform['outputParameters'], params['rolling'])
+  return X0
 
 
 def do_transforms(transform, df):
@@ -45,13 +34,6 @@ def do_transforms(transform, df):
     Y = pd.concat([Y, X2], axis=1)
   return Y
 
-
-def do_rolling(roll_from, roll_to, roll_space, X):
-  Y = np.empty((X.shape[0], 0))
-  for roll in range(roll_from, roll_to):
-    X1 = np.roll(X, roll*roll_space, axis=0)
-    Y = np.concatenate((Y, X1), axis=1)
-  return Y
 
 def train(transforms, parameters):
   df = copy_dataframe()
@@ -71,8 +53,10 @@ def train(transforms, parameters):
   df = do_transforms(transforms[0], df)
   df = pd.concat([df, df0], axis=1)
 
-  df_train = df[df.index <= 4620]
-  df_test = df[df.index > 4620]
+  rc = df.shape[0]
+  rc_train = int(rc * 0.8)
+  df_train = df[df.index <= rc_train]
+  df_test = df[df.index > rc_train]
 
   k = parameters['n_clusters']
   k_means = KMeans(n_clusters=k).fit(df_train)
@@ -107,6 +91,20 @@ def normalize_dataframe(df, filters, rolling, min, max):
     if col in filters:
       df_cr = df[col].rolling(rolling, min_periods=0, center=True)
       df[col] = ((df[col] - df_cr.min()) / (df_cr.max() - df_cr.min())) * (max-min) + min
+    elif col == 'Ret':
+      continue
+    else:
+      del df[col]
+  return df
+
+
+def standard_dataframe(df, filters, rolling):
+  for col in df.columns:
+    if col == 'Date' or col == 'Time':
+      continue
+    if col in filters:
+      df_cr = df[col].rolling(rolling, min_periods=0, center=True)
+      df[col] = (df[col] - df_cr.mean()) / df_cr.std()
     elif col == 'Ret':
       continue
     else:

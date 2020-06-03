@@ -35,10 +35,9 @@ def get_transform_data():
     for transform in transforms:
         if transform['id'] == 1000:
             output_data = df
-        elif transform['tool']['id'] == 101:
+        else:
             last_input_data = output_data.copy()
-            params = transform['parameters']
-            output_data = engine.normalize_dataframe(output_data, transform['outputParameters'], params['rolling'], params['min'], params['max'])
+            output_data = engine.transform_data(output_data, transform)
     
     if last_input_data is not None:
         last_input_data = last_input_data.to_numpy()
