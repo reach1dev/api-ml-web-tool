@@ -95,7 +95,7 @@ def normalize_dataframe(df, filters, rolling, min, max):
       continue
     else:
       del df[col]
-  return df
+  return df.fillna(0)
 
 
 def standard_dataframe(df, filters, rolling):
@@ -109,4 +109,4 @@ def standard_dataframe(df, filters, rolling):
       continue
     else:
       del df[col]
-  return df
+  return df.fillna(0)
