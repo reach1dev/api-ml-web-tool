@@ -37,7 +37,8 @@ def get_transform_data():
             output_data = df
         elif transform['tool']['id'] == 101:
             last_input_data = output_data.copy()
-            output_data = engine.normalize_dataframe(output_data, transform['outputParameters'], transform['parameters']['rolling'])
+            params = transform['parameters']
+            output_data = engine.normalize_dataframe(output_data, transform['outputParameters'], params['rolling'], params['min'], params['max'])
     
     if last_input_data is not None:
         last_input_data = last_input_data.to_numpy()
@@ -66,3 +67,5 @@ def upload_input_data():
     if engine.upload_input_file(file):
         return '', 200
     return '', 400
+
+# app.run()

@@ -29,7 +29,8 @@ def append_feature(Y, Z):
 
 def transform_data(X0, transform):
     if transform['tool']['id'] == 101:
-      return normalize_dataframe(X0, transform['outputParameters'], transform['parameters']['rolling'])
+      params = transform['parameters']
+      return normalize_dataframe(X0, transform['outputParameters'], params['rolling'], params['min'], params['max'])
     return X0
 
 
@@ -53,10 +54,11 @@ def do_rolling(roll_from, roll_to, roll_space, X):
   return Y
 
 def train(transforms, parameters):
-  df0 = copy_dataframe()
-  df0['Ret'] = df0.Open.shift(-2, fill_value=0) - df0.Open.shift(-1, fill_value=0)
-  del df0['Date']
-  del df0['Time']
+  df = copy_dataframe()
+  df0 = pd.DataFrame(index=df.index)
+  df0['Ret'] = df.Open.shift(-2, fill_value=0) - df.Open.shift(-1, fill_value=0)
+  del df['Date']
+  del df['Time']
 
   for transform in transforms:
     for tr in transforms:
@@ -66,7 +68,8 @@ def train(transforms, parameters):
         else:
             tr['children'].append(transform)
   
-  df = do_transforms(transforms[0], df0)
+  df = do_transforms(transforms[0], df)
+  df = pd.concat([df, df0], axis=1)
 
   df_train = df[df.index <= 4620]
   df_test = df[df.index > 4620]
@@ -97,13 +100,13 @@ def copy_dataframe():
   return input_file.copy()
 
 
-def normalize_dataframe(df, filters, rolling):
+def normalize_dataframe(df, filters, rolling, min, max):
   for col in df.columns:
     if col == 'Date' or col == 'Time':
       continue
     if col in filters:
       df_cr = df[col].rolling(rolling, min_periods=0, center=True)
-      df[col] = (df[col] - df_cr.min()) / (df_cr.max() - df_cr.min())
+      df[col] = ((df[col] - df_cr.min()) / (df_cr.max() - df_cr.min())) * (max-min) + min
     elif col == 'Ret':
       continue
     else:
