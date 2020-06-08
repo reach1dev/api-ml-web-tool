@@ -9,12 +9,17 @@ from flask_cors import CORS, cross_origin
 from sklearn import preprocessing
 from sklearn.cluster import KMeans
 import engine
+import uuid
+import datetime
+import time
+
 
 app = Flask(__name__)
 cors = CORS(app)
 
 
-input_data = []
+input_files = {}
+INPUT_FILE_LIMIT = 10
 
 
 def default(obj):
@@ -26,18 +31,25 @@ def default(obj):
     raise TypeError('Unknown type:', type(obj))
 
 
-@app.route('/get-transform-data', methods=['POST'])
-def get_transform_data():
-    df = engine.copy_dataframe()
+@app.route('/get-transform-data/<file_id>', methods=['POST'])
+def get_transform_data(file_id):
+    global input_files
+    if file_id not in input_files:
+        return '', 400
+    df = input_files[file_id]['file']
+    input_files[file_id]['timestamp'] = datetime.datetime.now()
+
     transforms = request.json['transforms']
     output_data = None
     last_input_data = None
+    last_transform = transforms[0]
     for transform in transforms:
         if transform['id'] == 1000:
-            output_data = df
+            output_data = df.copy()
         else:
             last_input_data = output_data.copy()
-            output_data = engine.transform_data(output_data, transform)
+            output_data = engine.transform_data(output_data, transform, last_transform['id'])
+            last_transform = transform
     
     if last_input_data is not None:
         last_input_data = last_input_data.to_numpy()
@@ -50,21 +62,45 @@ def get_transform_data():
     return json.dumps([last_input_data, output_data], default=default)
 
 
-@app.route('/train-and-test', methods=['POST'])
-def train_and_test():
+@app.route('/train-and-test/<file_id>', methods=['POST'])
+def train_and_test(file_id):
+    global input_files
+    if file_id not in input_files:
+        return '', 400
+    input_file = input_files[file_id]['file']
+    input_files[file_id]['timestamp'] = datetime.datetime.now()
+
     transforms = request.json['transforms']
     parameters = request.json['parameters']
-    
-    [graph, metrics] = engine.train(transforms, parameters)
+    [graph, metrics] = engine.train_and_test(input_file, transforms, parameters)
     return json.dumps([graph, metrics], default=default)
 
 
 @app.route('/upload-input-data', methods=['POST'])
 def upload_input_data():
-    global input_data
+    global input_files
     file = request.files['file']
-    if engine.upload_input_file(file):
-        return '', 200
-    return '', 400
+    try:
+        file_id = str(uuid.uuid4())
+        input_files[file_id] = {
+            'file': pd.read_csv (file),
+            'timestamp': datetime.datetime.now()
+        }
+        if len(input_files) > INPUT_FILE_LIMIT:
+            old_file_id = None
+            old_time = None
+            for file_id in input_files.keys():
+                t1 = time.mktime(datetime.datetime.now().timetuple())
+                t2 = time.mktime(input_files[file_id]['timestamp'].timetuple())
+                time_diff = t1-t2
+                if old_time is None or time_diff > old_time:
+                    old_time = time_diff
+                    old_file_id = file_id
+            if old_file_id is not None:
+                del input_files[old_file_id]
+        return {'file_id': file_id}, 200
+    except Exception as e:
+        print(e)
+        return '', 400
 
-# app.run()
+app.run()
