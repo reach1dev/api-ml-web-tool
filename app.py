@@ -43,23 +43,26 @@ def get_transform_data(file_id):
     output_data = None
     last_input_data = None
     last_transform = transforms[0]
-    for transform in transforms:
-        if transform['id'] == 1000:
-            output_data = df.copy()
-        else:
-            last_input_data = output_data.copy()
-            output_data = engine.transform_data(output_data, transform, last_transform['id'])
-            last_transform = transform
-    
-    if last_input_data is not None:
-        last_input_data = last_input_data.to_numpy()
-        sel = [i%50==0 for i in range(len(last_input_data))]
-        last_input_data = last_input_data[sel]
-    if output_data is not None:
-        output_data = output_data.to_numpy()
-        sel = [i%50==0 for i in range(len(output_data))]
-        output_data = output_data[sel]
-    return json.dumps([last_input_data, output_data], default=default)
+    try:
+        for transform in transforms:
+            if transform['id'] == 1000:
+                output_data = df.copy()
+            else:
+                last_input_data = output_data.copy()
+                output_data = engine.transform_data(output_data, transform, last_transform['id'])
+                last_transform = transform
+        
+        if last_input_data is not None:
+            last_input_data = last_input_data.to_numpy()
+            sel = [i%50==0 for i in range(len(last_input_data))]
+            last_input_data = last_input_data[sel]
+        if output_data is not None:
+            output_data = output_data.to_numpy()
+            sel = [i%50==0 for i in range(len(output_data))]
+            output_data = output_data[sel]
+        return json.dumps([last_input_data, output_data], default=default)
+    except:
+        return '', 402
 
 
 @app.route('/train-and-test/<file_id>', methods=['POST'])
