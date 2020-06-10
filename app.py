@@ -36,7 +36,7 @@ def default(obj):
 def get_transform_data(file_id):
     global input_files
     if file_id not in input_files:
-        return '', 405
+        return 'file_id=' + file_id, 405
     df = input_files[file_id]['file']
     input_files[file_id]['timestamp'] = datetime.datetime.now()
 
