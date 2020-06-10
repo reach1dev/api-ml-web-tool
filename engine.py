@@ -14,52 +14,41 @@ input_file = None
 
 def transform_data(df, transform, parentId):
   tool = transform['tool']['id']
-  idx = 0
-  filters = transform['outputParameters']
-  applies = transform['outputFilters']
+  inputs = transform['inputParameters']
+  outputs = transform['outputParameters']
   params = transform['parameters']
 
-  for col in df.columns:    
-    col_id = col.split('#')[0]
+  for col in inputs:    
     do_fill_na = True
-    if col_id in filters:
-      if col == 'Date' or col == 'Time':
-        idx = idx + 1
-        continue
-      if applies[idx]:
-        col_id = col.split('#')[0]
-        col_id = col_id + '#' + str(transform['id'])
-        if tool == 101:
-          df[col_id] = normalize_dataframe(df[col], params['rolling'], params['min'], params['max'])
-        elif tool == 102:
-          df[col_id] = standard_dataframe(df[col], params['rolling'])
-        elif tool == 103:
-          df[col_id] = fisher_transform(df[col])
-        elif tool == 104:
-          df[col_id] = subtract_median(df[col], params['rolling'])
-        elif tool == 105:
-          df[col_id] = subtract_mean(df[col], params['rolling'])
-        elif tool == 106:
-          df[col_id] = first_diff(df[col], params['shift'])
-        elif tool == 107:
-          df[col_id] = percent_return(df[col], params['shift'])
-        elif tool == 108:
-          df[col_id] = log_return(df[col], params['shift'])
-        elif tool == 109:
-          df[col_id] = clip_dataframe(df[col], params['min'], params['max'])
-        elif tool == 110:
-          do_fill_na = False
-          df[col_id] = turn_categorical(df[col])
-        elif tool == 111:
-          df[col_id] = turn_ranking(df[col])
-        elif tool == 112:
-          df[col_id] = turn_percentile(df[col])
-        elif tool == 113:
-          df[col_id] = power_function(df[col], params['function'])
-      del df[col]
-      idx = idx + 1
-    else:
-      del df[col]
+    if col in outputs:
+      col_id = outputs[col]
+      if tool == 101:
+        df[col_id] = normalize_dataframe(df[col], params['rolling'], params['min'], params['max'])
+      elif tool == 102:
+        df[col_id] = standard_dataframe(df[col], params['rolling'])
+      elif tool == 103:
+        df[col_id] = fisher_transform(df[col])
+      elif tool == 104:
+        df[col_id] = subtract_median(df[col], params['rolling'])
+      elif tool == 105:
+        df[col_id] = subtract_mean(df[col], params['rolling'])
+      elif tool == 106:
+        df[col_id] = first_diff(df[col], params['shift'])
+      elif tool == 107:
+        df[col_id] = percent_return(df[col], params['shift'])
+      elif tool == 108:
+        df[col_id] = log_return(df[col], params['shift'])
+      elif tool == 109:
+        df[col_id] = clip_dataframe(df[col], params['min'], params['max'])
+      elif tool == 110:
+        do_fill_na = False
+        df[col_id] = turn_categorical(df[col])
+      elif tool == 111:
+        df[col_id] = turn_ranking(df[col])
+      elif tool == 112:
+        df[col_id] = turn_percentile(df[col])
+      elif tool == 113:
+        df[col_id] = power_function(df[col], params['function'])
   if do_fill_na:
     return df.fillna(0)
   return df
@@ -159,41 +148,42 @@ def upload_input_file(file):
     return False
 
 
-def normalize_dataframe(df, rolling, min, max):
-  df_cr = df.rolling(rolling, min_periods=0, center=True)
+def normalize_dataframe(df, length=20, min=0, max=1):
+  df_cr = df.rolling(length, min_periods=0, center=True)
   return (((df - df_cr.min()) / (df_cr.max() - df_cr.min())) * (max-min) + min).fillna(0)
 
 
-def standard_dataframe(df, rolling):
-  df_cr = df.rolling(rolling, min_periods=0, center=True)
+def standard_dataframe(df, length=20):
+  df_cr = df.rolling(length, min_periods=0, center=True)
   return (df - df_cr.mean()) / df_cr.std().fillna(0)
 
 
 def fisher_transform(df):
-  return np.arctanh(df).replace(np.inf, 0).replace(-np.inf, 0)
+  # [np.log((1.0+v)/(1-v)) * .5 for v in df[col]]
+  return [np.log((1.0+v)/(1-v)) * .5 for v in df]
 
 
-def subtract_mean(df, rolling):
-  df_cr = df.rolling(rolling, min_periods=0, center=True)
+def subtract_mean(df, length=20):
+  df_cr = df.rolling(length, min_periods=0, center=True)
   return df-df_cr.mean()
 
 
-def subtract_median(df, rolling):
-  df_cr = df.rolling(rolling, min_periods=0, center=True)
+def subtract_median(df, length=20):
+  df_cr = df.rolling(length, min_periods=0, center=True)
   return df-df_cr.median()
 
 
-def first_diff(df, shift):
-  return df - df.shift(shift)
+def first_diff(df, length=1):
+  return df - df.shift(length)
 
 
-def percent_return(df, shift):
-  return df.pct_change(shift)
+def percent_return(df, length=1):
+  return ((df - df.shift(length))/df.shift(length)) * 100.0
 
 
-def log_return(df, shift):
+def log_return(df, length=1):
   # np.log(df['Close']/df['Close'].shift(x))
-  return np.log(df / (df.shift(shift))).replace(np.inf, 0).replace(-np.inf, 0)
+  return np.log(df / (df.shift(length))).replace(np.inf, 0).replace(-np.inf, 0)
 
 
 def clip_dataframe(df, min, max):

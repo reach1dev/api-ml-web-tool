@@ -12,6 +12,7 @@ import engine
 import uuid
 import datetime
 import time
+import traceback
 
 
 app = Flask(__name__)
@@ -41,27 +42,25 @@ def get_transform_data(file_id):
 
     transforms = request.json['transforms']
     output_data = None
-    last_input_data = None
     last_transform = transforms[0]
+    N = int(df.shape[0] / 100.0)
     try:
         for transform in transforms:
             if transform['id'] == 1000:
                 output_data = df.copy()
             else:
-                last_input_data = output_data.copy()
                 output_data = engine.transform_data(output_data, transform, last_transform['id'])
-                last_transform = transform
         
-        if last_input_data is not None:
-            last_input_data = last_input_data.to_numpy()
-            sel = [i%50==0 for i in range(len(last_input_data))]
-            last_input_data = last_input_data[sel]
+        columns = []
         if output_data is not None:
+            output_data = output_data[output_data.index % N == 0]
+            columns = pd.DataFrame(data=[output_data.columns.values,output_data.min(),output_data.max()]).to_numpy()
             output_data = output_data.to_numpy()
-            sel = [i%50==0 for i in range(len(output_data))]
-            output_data = output_data[sel]
-        return json.dumps([last_input_data, output_data], default=default)
+            # sel = [i%N==0 for i in range(len(output_data))]
+            # output_data = output_data[sel]
+        return json.dumps({'columns': columns, 'data': output_data}, default=default)
     except:
+        traceback.print_exc()
         return '', 402
 
 
@@ -85,8 +84,9 @@ def upload_input_data():
     file = request.files['file']
     try:
         file_id = str(uuid.uuid4())
+        df = pd.read_csv (file)
         input_files[file_id] = {
-            'file': pd.read_csv (file),
+            'file': df,
             'timestamp': datetime.datetime.now()
         }
         if len(input_files) > INPUT_FILE_LIMIT:
@@ -101,7 +101,7 @@ def upload_input_data():
                     old_file_id = file_id
             if old_file_id is not None:
                 del input_files[old_file_id]
-        return {'file_id': file_id}, 200
+        return json.dumps({'file_id': file_id, 'columns': df.columns.values}, default=default), 200
     except Exception as e:
         print(e)
         return '', 400
