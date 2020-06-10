@@ -81,13 +81,13 @@ def upload_input_data():
         file_id = str(uuid.uuid4())
         df = pd.read_csv (file, index_col='Date')
         df.to_csv(file_name(file_id))
-        path, dirs, files = next(os.walk("./tmp"))
+        path, dirs, files = next(os.walk("tmp"))
         files = [ fi for fi in files if not fi.endswith(".csv") ]
         file_count = len(files)
         if file_count > INPUT_FILE_LIMIT:
-            for f in os.listdir("./tmp"):
+            for f in os.listdir("tmp"):
                 if f.endswith(".csv") and os.stat(os.path.join(path,f)).st_mtime < datetime.now().timestamp() - 60*60:
-                    os.remove(os.path.join('./data/', f))
+                    os.remove(os.path.join('tmp/', f))
 
         return json.dumps({'file_id': file_id, 'columns': df.columns.values}, default=default), 200
     except Exception as e:
