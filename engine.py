@@ -46,9 +46,9 @@ def transform_data(df, transform, parentId):
       elif tool == 111:
         df[col_id] = turn_ranking(df[col])
       elif tool == 112:
-        df[col_id] = turn_percentile(df[col])
+        df[col_id] = turn_percentile(df[col], params['rolling'])
       elif tool == 113:
-        df[col_id] = power_function(df[col], params['function'])
+        df[col_id] = power_function(df[col], params['power'])
   if do_fill_na:
     return df.fillna(0)
   return df
@@ -149,12 +149,12 @@ def upload_input_file(file):
 
 
 def normalize_dataframe(df, length=20, min=0, max=1):
-  df_cr = df.rolling(length, min_periods=0, center=True)
+  df_cr = df.rolling(length)
   return (((df - df_cr.min()) / (df_cr.max() - df_cr.min())) * (max-min) + min).fillna(0)
 
 
 def standard_dataframe(df, length=20):
-  df_cr = df.rolling(length, min_periods=0, center=True)
+  df_cr = df.rolling(length)
   return (df - df_cr.mean()) / df_cr.std().fillna(0)
 
 
@@ -164,12 +164,12 @@ def fisher_transform(df):
 
 
 def subtract_mean(df, length=20):
-  df_cr = df.rolling(length, min_periods=0, center=True)
+  df_cr = df.rolling(length)
   return df-df_cr.mean()
 
 
 def subtract_median(df, length=20):
-  df_cr = df.rolling(length, min_periods=0, center=True)
+  df_cr = df.rolling(length)
   return df-df_cr.median()
 
 
@@ -199,8 +199,10 @@ def turn_ranking(df):
   return df.rank()
 
 
-def turn_percentile(df):
-  return pd.qcut(df, 100, labels=False, duplicates='drop')
+def turn_percentile(df, length=20):
+  if length <= 0:
+    return [df[x] / df[:x+1].max() * 100 for x in range(0, df.shape[0])]
+  return [df[x] / df[x-length:x+1].max() * 100 for x in range(0, df.shape[0])]
 
 
 def power_function(df, function):
