@@ -13,15 +13,19 @@ import uuid
 import datetime
 import time
 import traceback
+import os, time, sys
+from datetime import datetime
 
 
 app = Flask(__name__)
 cors = CORS(app)
 
 
-input_files = {}
-INPUT_FILE_LIMIT = 100
+INPUT_FILE_LIMIT = 2
 
+
+def file_name(file_id):
+    return 'data/' + file_id + '.csv'
 
 def default(obj):
     if type(obj).__module__ == np.__name__:
@@ -34,11 +38,7 @@ def default(obj):
 
 @app.route('/get-transform-data/<file_id>', methods=['POST'])
 def get_transform_data(file_id):
-    global input_files
-    if file_id not in input_files:
-        return input_files, 405
-    df = input_files[file_id]['file']
-    input_files[file_id]['timestamp'] = datetime.datetime.now()
+    df = pd.read_csv(file_name(file_id))
 
     transforms = request.json['transforms']
     output_data = None
@@ -66,11 +66,7 @@ def get_transform_data(file_id):
 
 @app.route('/train-and-test/<file_id>', methods=['POST'])
 def train_and_test(file_id):
-    global input_files
-    if file_id not in input_files:
-        return '', 400
-    input_file = input_files[file_id]['file']
-    input_files[file_id]['timestamp'] = datetime.datetime.now()
+    input_file = pd.read_csv(file_name(file_id))
 
     transforms = request.json['transforms']
     parameters = request.json['parameters']
@@ -80,27 +76,18 @@ def train_and_test(file_id):
 
 @app.route('/upload-input-data', methods=['POST'])
 def upload_input_data():
-    global input_files
     file = request.files['file']
     try:
         file_id = str(uuid.uuid4())
-        df = pd.read_csv (file)
-        input_files[file_id] = {
-            'file': df,
-            'timestamp': datetime.datetime.now()
-        }
-        if len(input_files) > INPUT_FILE_LIMIT:
-            old_file_id = None
-            old_time = None
-            for file_id in input_files.keys():
-                t1 = time.mktime(datetime.datetime.now().timetuple())
-                t2 = time.mktime(input_files[file_id]['timestamp'].timetuple())
-                time_diff = t1-t2
-                if old_time is None or time_diff > old_time:
-                    old_time = time_diff
-                    old_file_id = file_id
-            if old_file_id is not None:
-                del input_files[old_file_id]
+        df = pd.read_csv (file, index_col='Date')
+        df.to_csv(file_name(file_id))
+        path, dirs, files = next(os.walk("./data"))
+        file_count = len(files)
+        if file_count > INPUT_FILE_LIMIT:
+            for f in os.listdir("./data"):
+                if os.stat(os.path.join(path,f)).st_mtime < datetime.now().timestamp() - 60*60:
+                    os.remove(os.path.join('./data/', f))
+
         return json.dumps({'file_id': file_id, 'columns': df.columns.values}, default=default), 200
     except Exception as e:
         print(e)

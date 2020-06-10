@@ -160,7 +160,7 @@ def standard_dataframe(df, length=20):
 
 def fisher_transform(df):
   # [np.log((1.0+v)/(1-v)) * .5 for v in df[col]]
-  return [np.log((1.0+v)/(1-v)) * .5 for v in df]
+  return [0 if v==1 else np.log((1.0+v)/(1-v)) * .5 for v in df]
 
 
 def subtract_mean(df, length=20):
