@@ -25,7 +25,7 @@ INPUT_FILE_LIMIT = 2
 
 
 def file_name(file_id):
-    return 'data/' + file_id + '.csv'
+    return './data/' + file_id + '.csv'
 
 def default(obj):
     if type(obj).__module__ == np.__name__:
