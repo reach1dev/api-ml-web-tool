@@ -15,6 +15,7 @@ import time
 import traceback
 import os, time, sys
 from datetime import datetime
+import threading
 
 
 app = Flask(__name__)
@@ -70,8 +71,25 @@ def train_and_test(file_id):
 
     transforms = request.json['transforms']
     parameters = request.json['parameters']
-    [graph, metrics] = engine.train_and_test(input_file, transforms, parameters)
-    return json.dumps([graph, metrics], default=default)
+    res_file_id = str(uuid.uuid4())
+    def run_job(res_file_id):
+        [graph, metrics] = engine.train_and_test(input_file, transforms, parameters)        
+        with open('tmp/' + res_file_id + '.dat', 'wb') as f:
+            np.save(f, [graph, metrics])
+
+    thread = threading.Thread(target=run_job, args=[res_file_id])
+    thread.start()
+    return json.dumps({'res_file_id': res_file_id}), 200
+
+
+@app.route('/get-train-result/<res_file_id>', methods=['POST'])
+def get_train_result(res_file_id):
+    file_path = 'tmp/' + res_file_id + '.dat'
+    if os.path.exists(file_path):
+        with open(file_path, 'rb') as f:
+            [graph, metrics] = np.load(f, allow_pickle=True)
+            return json.dumps([graph, metrics], default=default)
+    return '', 204
 
 
 @app.route('/upload-input-data', methods=['POST'])
@@ -94,4 +112,4 @@ def upload_input_data():
         print(e)
         return '', 400
 
-# app.run()
+app.run()

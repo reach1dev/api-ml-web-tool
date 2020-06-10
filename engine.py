@@ -86,10 +86,12 @@ def knn_classifier(input_file, transforms, parameters):
   df_test_labels = pd.DataFrame(index=df_test.index)
   label = parameters['trainLabel']
   df_train_labels[label] = df_train[label]
+  del df_train[label]
   SHIFT = parameters['testShift']
   df_train = df_train.shift(SHIFT).fillna(0)
 
   df_test_labels[label] = df_test[label]
+  del df_test[label]
   df_test = df_test.shift(SHIFT).fillna(0)
   
   neigh = KNeighborsClassifier(n_neighbors=parameters['n_neighbors'])
@@ -97,7 +99,10 @@ def knn_classifier(input_file, transforms, parameters):
   df_test_result = neigh.predict(df_test[df_test.index>1])
   df_test_score = neigh.score(df_test, df_test_labels[label])
   df_train_score = neigh.score(df_train, df_train_labels[label])
-  return [[df_test_labels[label].to_numpy(), df_test_result], [[df_train_score, df_test_score]]]
+  N = int(rc / 100.0)
+  df_test_label = df_test_labels[label]
+  df_test_label = df_test_label[df_test_label.index%N == 0]
+  return [[df_test_label.to_numpy(), df_test_result[:][[x for x in range(df_test_result.shape[0]) if x%N == 0]]], [[df_train_score, df_test_score]]]
   
 
 def prepare_train(input_file, transforms, train_count):
@@ -114,6 +119,16 @@ def prepare_train(input_file, transforms, train_count):
             tr['children'].append(transform)
   
   df = do_transforms(transforms[0], df)
+
+  input_filters = transforms[1]['inputFilters']
+  input_parameters = transforms[1]['inputParameters']
+  df1 = pd.DataFrame(index=df.index)
+  idx = 0
+  for col in input_parameters:
+    if input_filters[idx] or col == transforms[1]['parameters']['trainLabel']:
+      df1[col] = df[col]
+    idx = idx +1
+  df = df1
 
   df_train = df[df.index <= train_count]
   df_test = df[df.index > train_count]
