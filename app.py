@@ -73,14 +73,9 @@ def train_and_test(file_id):
     parameters = request.json['parameters']
     res_file_id = str(uuid.uuid4())
     def run_job(res_file_id):
-        try:
-            [graph, metrics] = engine.train_and_test(input_file, transforms, parameters)
-            with open('tmp/' + res_file_id + '.dat', 'wb') as f:
-                np.save(f, [graph, metrics])
-        except Exception as e:
-            print(e)
-            with open('tmp/' + res_file_id + '.failed', 'wb') as f:
-                np.save(f, np.array([0]))
+        [graph, metrics] = engine.train_and_test(input_file, transforms, parameters)
+        with open('tmp/' + res_file_id + '.dat', 'wb') as f:
+            np.save(f, [graph, metrics])
 
     thread = threading.Thread(target=run_job, args=[res_file_id])
     thread.start()
