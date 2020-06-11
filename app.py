@@ -77,7 +77,8 @@ def train_and_test(file_id):
             [graph, metrics] = engine.train_and_test(input_file, transforms, parameters)
             with open('tmp/' + res_file_id + '.dat', 'wb') as f:
                 np.save(f, [graph, metrics])
-        except:
+        except Exception as e:
+            print(e)
             with open('tmp/' + res_file_id + '.failed', 'wb') as f:
                 np.save(f, np.array([0]))
 
@@ -92,7 +93,7 @@ def get_train_result(res_file_id):
     failed_file_path = 'tmp/' + res_file_id + '.failed'
     if os.path.exists(failed_file_path):
         os.remove(failed_file_path)
-        return '', 400
+        return '', 203
     if os.path.exists(file_path):
         with open(file_path, 'rb') as f:
             [graph, metrics] = np.load(f, allow_pickle=True)
