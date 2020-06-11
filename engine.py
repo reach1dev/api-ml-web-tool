@@ -39,7 +39,7 @@ def transform_data(df, transform, parentId):
       elif tool == 108:
         df[col_id] = log_return(df[col], params['shift'])
       elif tool == 109:
-        df[col_id] = clip_dataframe(df[col], params['min'], params['max'])
+        df[col_id] = clip_dataframe(df[col], params['min'], params['max'], params['scale'])
       elif tool == 110:
         do_fill_na = False
         df[col_id] = turn_categorical(df[col])
@@ -201,8 +201,8 @@ def log_return(df, length=1):
   return np.log(df / (df.shift(length))).replace(np.inf, 0).replace(-np.inf, 0)
 
 
-def clip_dataframe(df, min, max):
-  return df.clip(min, max)
+def clip_dataframe(df, min, max, scale=1):
+  return df.clip(min, max) * scale
 
 
 def turn_categorical(df):
