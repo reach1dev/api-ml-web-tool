@@ -73,9 +73,16 @@ def train_and_test(file_id):
     parameters = request.json['parameters']
     res_file_id = str(uuid.uuid4())
     def run_job(res_file_id):
-        [graph, metrics] = engine.train_and_test(input_file, transforms, parameters)
-        with open('tmp/' + res_file_id + '.dat', 'wb') as f:
-            np.save(f, [graph, metrics])
+        try:
+            [graph, metrics] = engine.train_and_test(input_file, transforms, parameters)
+            with open('tmp/' + res_file_id + '.dat', 'wb') as f:
+                np.save(f, [graph, metrics])
+                f.close()
+        except Exception as e:
+            print(e)
+            with open('tmp/' + res_file_id + '.err', 'w') as f:
+                f.writelines([str(e)])
+                f.close()
 
     thread = threading.Thread(target=run_job, args=[res_file_id])
     thread.start()
@@ -85,13 +92,17 @@ def train_and_test(file_id):
 @app.route('/get-train-result/<res_file_id>', methods=['POST'])
 def get_train_result(res_file_id):
     file_path = 'tmp/' + res_file_id + '.dat'
-    failed_file_path = 'tmp/' + res_file_id + '.failed'
-    if os.path.exists(failed_file_path):
-        os.remove(failed_file_path)
-        return '', 203
+    err_path = 'tmp/' + res_file_id + '.err'
+    if os.path.exists(err_path):
+        with open(err_path, 'r') as f:
+            err = f.readline()
+            f.close()
+            os.remove(err_path)
+            return json.dumps({'err': err}, default=default), 203
     if os.path.exists(file_path):
         with open(file_path, 'rb') as f:
             [graph, metrics] = np.load(f, allow_pickle=True)
+            f.close()
             os.remove(file_path)
             return json.dumps([graph, metrics], default=default)
     return '', 204

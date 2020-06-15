@@ -6,6 +6,13 @@ from flask_cors import CORS, cross_origin
 from sklearn import preprocessing
 from sklearn.cluster import KMeans
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+from sklearn.decomposition import PCA
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from datetime import datetime
 
 
@@ -55,11 +62,9 @@ def transform_data(df, transform, parentId):
 
 
 def do_transforms(transform, df):
-  if transform['target'] == True:
-    return df
   Y = pd.DataFrame(index=df.index)
   if 'children' not in transform:
-    return None
+    return df
   for child in transform['children']:
     X = df.copy()
     X1 = transform_data(X, child, transform['id'])
@@ -73,32 +78,50 @@ def train_and_test(input_file, transforms, parameters):
   algorithmType = parameters['algorithmType']
   if algorithmType == 0:
     return kmean_clustering(input_file, transforms, parameters)
-  elif algorithmType == 1:
-    return knn_classifier(input_file, transforms, parameters)
+  elif algorithmType == 5:
+    return pca_analyse(input_file, transforms, parameters)
+  elif algorithmType >= 1:
+    return knn_classifier(input_file, transforms, parameters, algorithmType)
   return []
 
 
-def knn_classifier(input_file, transforms, parameters):
+def pca_analyse(input_file, transforms, parameters):
+  df0 = pd.DataFrame(index=input_file.index)
+  rc = df0.shape[0]
+  [df_train, _] = prepare_train(input_file, transforms, rc)
+
+  k = df_train.shape[1]
+  pca = PCA(n_components=k)
+  pca.fit(df_train)
+  
+  metrics = np.array([pca.explained_variance_ratio_, pca.singular_values_])
+  return [metrics, metrics.T]
+
+def knn_classifier(input_file, transforms, parameters, algorithmType):
   rc = input_file.shape[0]
   train_count = int(rc * 0.8)
-  df_train, df_test = prepare_train(input_file, transforms, train_count)
-  df_train_labels = pd.DataFrame(index=df_train.index)
-  df_test_labels = pd.DataFrame(index=df_test.index)
+  df_train, df_test, df_train_labels, df_test_labels = prepare_train(input_file, transforms, train_count)
   label = parameters['trainLabel']
-  df_train_labels[label] = df_train[label]
-  del df_train[label]
   SHIFT = parameters['testShift']
   df_train = df_train.shift(SHIFT).fillna(0)
 
-  df_test_labels[label] = df_test[label]
-  del df_test[label]
   df_test = df_test.shift(SHIFT).fillna(0)
   
-  neigh = KNeighborsClassifier(n_neighbors=parameters['n_neighbors'])
-  neigh.fit(df_train, df_train_labels[label])
-  df_test_result = neigh.predict(df_test[df_test.index>1])
-  df_test_score = neigh.score(df_test, df_test_labels[label])
-  df_train_score = neigh.score(df_train, df_train_labels[label])
+  if algorithmType == 1:
+    classifier = KNeighborsClassifier(n_neighbors=parameters['n_neighbors'])
+  elif algorithmType == 2:
+    classifier = LinearRegression()
+  elif algorithmType == 3:
+    classifier = LogisticRegression(random_state=0, solver=parameters.get('solver', 'lbfgs'), penalty=parameters.get('penalty', 'l2'))
+  elif algorithmType == 4: 
+    classifier = make_pipeline(StandardScaler(), SVC(gamma=parameters.get('gamma', 'auto'), kernel=parameters.get('kernel', 'rbf'), degree=parameters.get('degree', 3)))
+  elif algorithmType == 6:
+    classifier = LinearDiscriminantAnalysis()
+  classifier.fit(df_train, df_train_labels[label])
+
+  df_test_result = classifier.predict(df_test[df_test.index>1])
+  df_test_score = classifier.score(df_test, df_test_labels[label])
+  df_train_score = classifier.score(df_train, df_train_labels[label])
   N = int(rc / 100.0)
   df_test_label = df_test_labels[label]
   df_test_label = df_test_label[df_test_label.index%N == 0]
@@ -125,14 +148,26 @@ def prepare_train(input_file, transforms, train_count):
   df1 = pd.DataFrame(index=df.index)
   idx = 0
   for col in input_parameters:
-    if input_filters[idx] or col == transforms[1]['parameters']['trainLabel']:
+    if input_filters[idx]:
       df1[col] = df[col]
     idx = idx +1
-  df = df1
+  
+  df_train = df1[df.index <= train_count]
+  df_test = df1[df.index > train_count]
 
-  df_train = df[df.index <= train_count]
-  df_test = df[df.index > train_count]
-  return df_train, df_test
+  algorithmType = transforms[1]['parameters']['algorithmType']
+  if algorithmType == 0 or algorithmType == 5:
+    return df_train, df_test
+
+  train_label = transforms[1]['parameters']['trainLabel']
+  df2 = pd.DataFrame(index=df.index)
+  df2[train_label] = df[train_label]
+  
+
+  df_train_labels = df2[df.index <= train_count]
+  df_test_labels = df2[df.index > train_count]
+
+  return df_train, df_test, df_train_labels, df_test_labels
 
 
 def kmean_clustering(input_file, transforms, parameters):
