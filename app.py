@@ -130,4 +130,4 @@ def upload_input_data():
         print(e)
         return '', 400
 
-app.run()
+# app.run()
