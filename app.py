@@ -76,7 +76,8 @@ def train_and_test(file_id):
         try:
             [graph, metrics] = engine.train_and_test(input_file, transforms, parameters)
             with open('tmp/' + res_file_id + '.dat', 'wb') as f:
-                np.save(f, [graph, metrics])
+                np.save(f, graph)
+                np.save(f, metrics)
                 f.close()
         except Exception as e:
             print(e)
@@ -101,7 +102,8 @@ def get_train_result(res_file_id):
             return json.dumps({'err': err}, default=default), 203
     if os.path.exists(file_path):
         with open(file_path, 'rb') as f:
-            [graph, metrics] = np.load(f, allow_pickle=True)
+            graph = np.load(f, allow_pickle=True)
+            metrics = np.load(f, allow_pickle=True)
             f.close()
             os.remove(file_path)
             return json.dumps([graph, metrics], default=default)
@@ -128,4 +130,4 @@ def upload_input_data():
         print(e)
         return '', 400
 
-# app.run()
+app.run()

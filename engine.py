@@ -11,9 +11,19 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
+from sklearn.svm import SVR
 from sklearn.decomposition import PCA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from datetime import datetime
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import precision_score
+from sklearn.metrics import recall_score
+from sklearn.metrics import f1_score
+from sklearn.metrics import r2_score
+from sklearn.metrics import mean_squared_error
+from sklearn.metrics import explained_variance_score
+from sklearn.metrics import max_error
+from sklearn.metrics import mean_absolute_error
 
 
 input_file = None
@@ -88,7 +98,7 @@ def train_and_test(input_file, transforms, parameters):
 def pca_analyse(input_file, transforms, parameters):
   df0 = pd.DataFrame(index=input_file.index)
   rc = df0.shape[0]
-  [df_train, _] = prepare_train(input_file, transforms, rc)
+  [df_train, _] = prepare_train(input_file, transforms, rc, parameters['algorithmType'])
 
   k = df_train.shape[1]
   pca = PCA(n_components=k)
@@ -97,14 +107,25 @@ def pca_analyse(input_file, transforms, parameters):
   metrics = np.array([pca.explained_variance_ratio_, pca.singular_values_])
   return [metrics, metrics.T]
 
+
+def get_metrics(y_true, y_pred, is_classification):
+  y_true = y_true[y_true.index>1]
+  return [
+    r2_score(y_true, y_pred) if is_classification else accuracy_score(y_true, y_pred, normalize=False),
+    mean_squared_error(y_true, y_pred) if is_classification else precision_score(y_true, y_pred, average=None, zero_division=1),
+    mean_absolute_error(y_true, y_pred) if is_classification else recall_score(y_true, y_pred, average=None, zero_division=1),
+    explained_variance_score(y_true, y_pred) if is_classification else f1_score(y_true, y_pred, average=None, zero_division=1)
+  ]
+
 def knn_classifier(input_file, transforms, parameters, algorithmType):
   rc = input_file.shape[0]
   train_count = int(rc * 0.8)
-  df_train, df_test, df_train_labels, df_test_labels = prepare_train(input_file, transforms, train_count)
+  df_train, df_test, df_train_labels, df_test_labels = prepare_train(input_file, transforms, train_count, parameters['algorithmType'])
   label = parameters['trainLabel']
   SHIFT = parameters['testShift']
+  df_train_org = df_train.copy()
+  df_test_org = df_test.copy()
   df_train = df_train.shift(SHIFT).fillna(0)
-
   df_test = df_test.shift(SHIFT).fillna(0)
   
   if algorithmType == 1:
@@ -113,22 +134,50 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     classifier = LinearRegression()
   elif algorithmType == 3:
     classifier = LogisticRegression(random_state=0, solver=parameters.get('solver', 'lbfgs'), penalty=parameters.get('penalty', 'l2'))
-  elif algorithmType == 4: 
-    classifier = make_pipeline(StandardScaler(), SVC(gamma=parameters.get('gamma', 'auto'), kernel=parameters.get('kernel', 'rbf'), degree=parameters.get('degree', 3)))
+  elif algorithmType == 4:
+    if parameters.get('useSVR', False):
+      model = SVR(gamma=parameters.get('gamma', 'auto'), kernel=parameters.get('kernel', 'rbf'), degree=parameters.get('degree', 3))
+    else:
+      model = SVC(gamma=parameters.get('gamma', 'auto'), kernel=parameters.get('kernel', 'rbf'), degree=parameters.get('degree', 3))
+    classifier = make_pipeline(StandardScaler(), model)
   elif algorithmType == 6:
     classifier = LinearDiscriminantAnalysis()
-  classifier.fit(df_train, df_train_labels[label])
+  multiple = parameters.get('multiple', False) and algorithmType == 2
+  df_train_target = df_train_org if multiple else df_train_labels[label]
+  classifier.fit(df_train, df_train_target)
 
+  df_test_target = df_test_org if multiple else df_test_labels[label]
+  df_train_result = classifier.predict(df_train[df_train.index>1])
   df_test_result = classifier.predict(df_test[df_test.index>1])
-  df_test_score = classifier.score(df_test, df_test_labels[label])
-  df_train_score = classifier.score(df_train, df_train_labels[label])
+
+  is_regression = algorithmType == 2 or algorithmType == 3 or (algorithmType==4 and parameters.get('useSVR', False))
+  
+  df_test_score = get_metrics(df_test_target, df_test_result, is_regression)
+  df_train_score = get_metrics(df_train_target, df_train_result, is_regression)
   N = int(rc / 100.0)
-  df_test_label = df_test_labels[label]
-  df_test_label = df_test_label[df_test_label.index%N == 0]
-  return [[df_test_label.to_numpy(), df_test_result[:][[x for x in range(df_test_result.shape[0]) if x%N == 0]]], [[df_train_score, df_test_score]]]
+  # df_test_target = df_test_target[df_test_target.index%N == 0]
+  # df_test_result = df_test_result[df_test_result.index%N == 0]
+  res = []
+  if multiple:
+    col_idx = 0
+    for _ in df_test_target:
+      sel = [x for x in range(df_test_result.shape[0]) if x%N == 0]
+      res.append(df_test_target.to_numpy()[sel, col_idx])
+      res.append(df_test_result[sel, col_idx])
+      col_idx = col_idx + 1
+    # df_test_result = df_test_result[[x for x in range(df_test_result.shape[0]) if x%N == 0], 0]
+    # df_test_target = df_test_target.to_numpy().T
+    # df_test_result = df_test_result[[x for x in range(df_test_result.shape[0]) if x%N == 0], :].T
+  else:
+    # df_test_target = df_test_target[df_test_target.index%N == 0].to_numpy()
+    df_test_target = df_test_target.to_numpy()[[x for x in range(df_test_target.shape[0]) if x%N == 0]]
+    df_test_result = df_test_result[[x for x in range(df_test_result.shape[0]) if x%N == 0]]
+    res = [df_test_target, df_test_result]
+
+  return [np.array(res), np.array([df_train_score, df_test_score]).T]
   
 
-def prepare_train(input_file, transforms, train_count):
+def prepare_train(input_file, transforms, train_count, algorithmType):
   df = input_file.copy()
   del df['Date']
   del df['Time']
@@ -155,11 +204,12 @@ def prepare_train(input_file, transforms, train_count):
   df_train = df1[df.index <= train_count]
   df_test = df1[df.index > train_count]
 
-  algorithmType = transforms[1]['parameters']['algorithmType']
   if algorithmType == 0 or algorithmType == 5:
     return df_train, df_test
 
   train_label = transforms[1]['parameters']['trainLabel']
+  if train_label == '':
+    return df_train, df_test, None, None
   df2 = pd.DataFrame(index=df.index)
   df2[train_label] = df[train_label]
   
@@ -175,7 +225,7 @@ def kmean_clustering(input_file, transforms, parameters):
   df0['Ret'] = input_file.Open.shift(-2, fill_value=0) - input_file.Open.shift(-1, fill_value=0)
   rc = df0.shape[0]
   train_count = int(rc * 0.8)
-  df_train, df_test = prepare_train(input_file, transforms, train_count)
+  df_train, df_test = prepare_train(input_file, transforms, train_count, parameters['algorithmType'])
   df0_train = df0[df0.index <= train_count]
   df0_test = df0[df0.index > train_count]
 
