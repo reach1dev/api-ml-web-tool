@@ -81,7 +81,7 @@ def train_and_test(file_id):
         except Exception as e:
             print(e)
             with open('tmp/' + res_file_id + '.err', 'w') as f:
-                f.writelines([str(e)])
+                f.writelines([repr(e)])
                 f.close()
 
     thread = threading.Thread(target=run_job, args=[res_file_id])
