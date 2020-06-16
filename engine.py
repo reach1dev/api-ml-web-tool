@@ -144,9 +144,15 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     classifier = LinearDiscriminantAnalysis()
   multiple = parameters.get('multiple', False) and algorithmType == 2
   df_train_target = df_train_org if multiple else df_train_labels[label]
+  df_test_target = df_test_org if multiple else df_test_labels[label]
+  if algorithmType == 3:
+    df_train_target = df_train_target.astype('int')
+    df_test_target = df_test_target.astype('int')
   classifier.fit(df_train, df_train_target)
 
-  df_test_target = df_test_org if multiple else df_test_labels[label]
+  if algorithmType == 3:
+    df_train = df_train.astype('int')
+    df_test = df_test.astype('int')
   df_train_result = classifier.predict(df_train[df_train.index>1])
   df_test_result = classifier.predict(df_test[df_test.index>1])
 
