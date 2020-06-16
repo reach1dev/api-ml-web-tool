@@ -111,7 +111,7 @@ def pca_analyse(input_file, transforms, parameters):
 def get_metrics(y_true, y_pred, is_classification):
   y_true = y_true[y_true.index>1]
   return [
-    r2_score(y_true, y_pred) if is_classification else accuracy_score(y_true, y_pred, normalize=False),
+    r2_score(y_true, y_pred) if is_classification else accuracy_score(y_true, y_pred, normalize=True),
     mean_squared_error(y_true, y_pred) if is_classification else precision_score(y_true, y_pred, average=None, zero_division=1),
     mean_absolute_error(y_true, y_pred) if is_classification else recall_score(y_true, y_pred, average=None, zero_division=1),
     explained_variance_score(y_true, y_pred) if is_classification else f1_score(y_true, y_pred, average=None, zero_division=1)
