@@ -160,7 +160,7 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
   
   df_test_score = get_metrics(df_test_target, df_test_result, is_regression)
   df_train_score = get_metrics(df_train_target, df_train_result, is_regression)
-  N = 1 # int(rc / 100.0)
+  N = int(rc / 1000.0)
   # df_test_target = df_test_target[df_test_target.index%N == 0]
   # df_test_result = df_test_result[df_test_result.index%N == 0]
   res = []

@@ -44,7 +44,7 @@ def get_transform_data(file_id):
     transforms = request.json['transforms']
     output_data = None
     last_transform = transforms[0]
-    N = 1 # int(df.shape[0] / 100.0)
+    N = int(df.shape[0] / 1000.0)
     try:
         for transform in transforms:
             if transform['id'] == 1000:
