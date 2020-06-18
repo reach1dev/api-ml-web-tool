@@ -16,6 +16,7 @@ import traceback
 import os, time, sys
 from datetime import datetime
 import threading
+from constants import get_x_unit
 
 
 app = Flask(__name__)
@@ -44,7 +45,7 @@ def get_transform_data(file_id):
     transforms = request.json['transforms']
     output_data = None
     last_transform = transforms[0]
-    N = int(df.shape[0] / 1000.0)
+    N = get_x_unit(df.shape[0])
     try:
         for transform in transforms:
             if transform['id'] == 1000:
@@ -125,7 +126,7 @@ def upload_input_data():
                 if f.endswith(".csv") and os.stat(os.path.join(path,f)).st_mtime < datetime.now().timestamp() - 60*60:
                     os.remove(os.path.join('tmp/', f))
 
-        return json.dumps({'file_id': file_id, 'columns': df.columns.values}, default=default), 200
+        return json.dumps({'file_id': file_id, 'columns': df.columns.values, 'sample_count': len(df)}, default=default), 200
     except Exception as e:
         print(e)
         return '', 400

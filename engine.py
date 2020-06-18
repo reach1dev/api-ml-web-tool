@@ -24,7 +24,7 @@ from sklearn.metrics import mean_squared_error
 from sklearn.metrics import explained_variance_score
 from sklearn.metrics import max_error
 from sklearn.metrics import mean_absolute_error
-
+from constants import get_x_unit
 
 input_file = None
 
@@ -120,6 +120,9 @@ def get_metrics(y_true, y_pred, is_classification):
 def knn_classifier(input_file, transforms, parameters, algorithmType):
   rc = input_file.shape[0]
   train_count = int(rc * 0.8)
+  if 'trainSampleCount' in parameters:
+    train_count = parameters['trainSampleCount']
+  print('train_count = ' + str(train_count))
   df_train, df_test, df_train_labels, df_test_labels = prepare_train(input_file, transforms, train_count, parameters['algorithmType'])
   label = parameters['trainLabel']
   SHIFT = parameters['testShift']
@@ -160,7 +163,7 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
   
   df_test_score = get_metrics(df_test_target, df_test_result, is_regression)
   df_train_score = get_metrics(df_train_target, df_train_result, is_regression)
-  N = int(rc / 1000.0)
+  N = get_x_unit(rc) # int(rc / 500.0)
   # df_test_target = df_test_target[df_test_target.index%N == 0]
   # df_test_result = df_test_result[df_test_result.index%N == 0]
   res = []
