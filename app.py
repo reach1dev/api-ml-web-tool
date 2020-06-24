@@ -84,9 +84,10 @@ def inter_train(file_id, optimize = False):
     res_file_id = str(uuid.uuid4())
     def run_job(res_file_id):
         try:
-            res_data = engine.train_and_test(input_file, transforms, parameters, optimize=optimize)
+            [graph, metrics] = engine.train_and_test(input_file, transforms, parameters, optimize=optimize)
             with open('tmp/' + res_file_id + '.dat', 'wb') as f:
-                np.save(f, res_data)
+                np.save(f, graph)
+                np.save(f, metrics)
                 f.close()
         except Exception as e:
             print(e)
@@ -110,10 +111,10 @@ def get_train_result(res_file_id):
             return json.dumps({'err': err}, default=default), 203
     if os.path.exists(file_path):
         with open(file_path, 'rb') as f:
-            res_data = np.load(f, allow_pickle=True)
+            graph = np.load(f, allow_pickle=True)
+            metrics = np.load(f, allow_pickle=True)
             f.close()
             os.remove(file_path)
-            [graph, metrics] = res_data
             return json.dumps([graph, metrics], default=default)
     return '', 204
 

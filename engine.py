@@ -106,6 +106,8 @@ def train_and_test(input_file, transforms, parameters, optimize = False):
   algorithmType = parameters['type']
   if algorithmType == 0:
     return kmean_clustering(input_file, transforms, parameters, optimize)
+  elif algorithmType == 6:
+    return lda_analyse(input_file, transforms, parameters)
   elif algorithmType == 5:
     return pca_analyse(input_file, transforms, parameters)
   elif algorithmType >= 1:
@@ -208,6 +210,20 @@ def grid_optimize(input_file, transforms, parameters, algorithmType):
       result.append([p[main_param], val])
       k = k + 1
   return [result, gridCV.best_params_]
+
+
+def lda_analyse(input_file, transforms, parameters):
+  df0 = pd.DataFrame(index=input_file.index)
+  rc = df0.shape[0]
+  [df_train, _, df_train_target, _] = prepare_train(input_file, transforms, rc, 0, parameters['randomSelect'], parameters['type'], parameters)
+
+  k = parameters['n_components']
+  lda = LinearDiscriminantAnalysis(n_components=k)
+  df_new = lda.fit_transform(df_train, df_train_target[parameters['trainLabel']])
+  metrics = np.array([lda.explained_variance_ratio_, ['' for i in range(k)]])
+  
+  return [df_new.T, metrics.T]
+
 
 def knn_classifier(input_file, transforms, parameters, algorithmType):
   rc = input_file.shape[0]
