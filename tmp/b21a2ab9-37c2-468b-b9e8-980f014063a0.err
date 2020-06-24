@@ -1,0 +1,1 @@
+ValueError("the init parameter for the k-means should be 'k-means++' or 'random' or an ndarray, '['k-means++']' (type '<class 'list'>') was passed.")

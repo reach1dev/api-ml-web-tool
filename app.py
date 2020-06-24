@@ -68,6 +68,15 @@ def get_transform_data(file_id):
 
 @app.route('/train-and-test/<file_id>', methods=['POST'])
 def train_and_test(file_id):
+    return inter_train(file_id)
+
+
+@app.route('/optimize/<file_id>', methods=['POST'])
+def optimize(file_id):
+    return inter_train(file_id, optimize=True)
+
+
+def inter_train(file_id, optimize = False):
     input_file = pd.read_csv(file_name(file_id))
 
     transforms = request.json['transforms']
@@ -75,10 +84,9 @@ def train_and_test(file_id):
     res_file_id = str(uuid.uuid4())
     def run_job(res_file_id):
         try:
-            [graph, metrics] = engine.train_and_test(input_file, transforms, parameters)
+            res_data = engine.train_and_test(input_file, transforms, parameters, optimize=optimize)
             with open('tmp/' + res_file_id + '.dat', 'wb') as f:
-                np.save(f, graph)
-                np.save(f, metrics)
+                np.save(f, res_data)
                 f.close()
         except Exception as e:
             print(e)
@@ -89,7 +97,6 @@ def train_and_test(file_id):
     thread = threading.Thread(target=run_job, args=[res_file_id])
     thread.start()
     return json.dumps({'res_file_id': res_file_id}), 200
-
 
 @app.route('/get-train-result/<res_file_id>', methods=['POST'])
 def get_train_result(res_file_id):
@@ -103,10 +110,10 @@ def get_train_result(res_file_id):
             return json.dumps({'err': err}, default=default), 203
     if os.path.exists(file_path):
         with open(file_path, 'rb') as f:
-            graph = np.load(f, allow_pickle=True)
-            metrics = np.load(f, allow_pickle=True)
+            res_data = np.load(f, allow_pickle=True)
             f.close()
             os.remove(file_path)
+            [graph, metrics] = res_data
             return json.dumps([graph, metrics], default=default)
     return '', 204
 
@@ -131,4 +138,4 @@ def upload_input_data():
         print(e)
         return '', 400
 
-# app.run()
+app.run()
