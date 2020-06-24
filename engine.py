@@ -248,7 +248,7 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
   df_train_result = classifier.predict(df_train)
   df_test_result = classifier.predict(df_test)
 
-  is_regression = algorithmType == 2 or algorithmType == 3 or (algorithmType==4 and parameters.get('useSVR', False))
+  is_regression = algorithmType == 2 or (algorithmType==4 and parameters.get('useSVR', False))
   
   df_test_score = get_metrics(df_test_target, df_test_result, is_regression)
   df_train_score = get_metrics(df_train_target, df_train_result, is_regression)
