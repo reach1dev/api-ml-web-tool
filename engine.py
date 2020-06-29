@@ -304,7 +304,7 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
   return res_data_set
 
 
-def triple_barrier(df, close='Close', open='Open', low='Low', high='High', up=10, dn=10, maxhold=10):
+def triple_barrier(df, up=10, dn=10, maxhold=10, close='Close', high='High', open='Open', low='Low'):
     final_value = []
     # Enumerate over df['Close']
     for i, c in enumerate(df[close]):
@@ -392,7 +392,8 @@ def prepare_train(input_file, transforms, train_count, train_shift, random_selec
         return [[df_train, df_test, df_train_labels, df_test_labels]]
       df2 = pd.DataFrame(index=df.index)
       if train_label == 'triple_barrier':
-        df2[train_label] = triple_barrier(df)
+        triple_option = parameters['tripleOptions']
+        df2[train_label] = triple_barrier(df, triple_option['up'], triple_option['down'], triple_option['maxHold'])
         df2[train_label] = df2[train_label].astype('category', copy=False)
       else:
         df2[train_label] = df[train_label]
@@ -434,7 +435,8 @@ def prepare_train(input_file, transforms, train_count, train_shift, random_selec
     return [[df_train, df_test, df_train_labels, df_test_labels]]
   df2 = pd.DataFrame(index=df.index)
   if train_label == 'triple_barrier':
-    df2[train_label] = triple_barrier(df)
+    triple_option = parameters['tripleOptions']
+    df2[train_label] = triple_barrier(df, triple_option['up'], triple_option['down'], triple_option['maxHold'])
   else:
     df2[train_label] = df[train_label]
   
