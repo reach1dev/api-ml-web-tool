@@ -137,8 +137,8 @@ def pca_analyse(input_file, transforms, parameters):
   return res_data_set
 
 
-def get_metrics(y_true, y_pred, is_classification):
-  y_true = y_true[y_true.index>=1]
+def get_metrics(y_true, y_pred, is_classification, train_shift):
+  y_true = y_true[y_true.index>=train_shift]
   return [
     r2_score(y_true, y_pred) if is_classification else accuracy_score(y_true, y_pred, normalize=True) * 100,
     mean_squared_error(y_true, y_pred) if is_classification else precision_score(y_true, y_pred, average=None, zero_division=1),
@@ -154,6 +154,8 @@ def knn_optimize(input_file, transforms, parameters, algorithmType):
     train_count = parameters['trainSampleCount']
   
   train_shift = parameters['testShift']
+  if parameters['trainLabel'] == 'triple_barrier':
+    train_shift = 0
   train_data_set = prepare_train(input_file, transforms, train_count, train_shift, parameters['randomSelect'], parameters['type'], parameters)
   res_data_set = []
   for df_train, df_test, df_train_labels, df_test_labels in train_data_set:
@@ -182,6 +184,8 @@ def grid_optimize(input_file, transforms, parameters, algorithmType):
     train_count = parameters['trainSampleCount']
   
   train_shift = parameters['testShift']
+  if parameters['trainLabel'] == 'triple_barrier':
+    train_shift = 0
   train_data_set = prepare_train(input_file, transforms, train_count, train_shift, parameters['randomSelect'], parameters['type'], parameters)
   res_data_set = []
   for df_train, _, df_train_labels, _ in train_data_set:
@@ -244,6 +248,8 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     train_count = parameters['trainSampleCount']
   
   train_shift = parameters['testShift']
+  if parameters['trainLabel'] == 'triple_barrier':
+    train_shift = 0
   train_data_set = prepare_train(input_file, transforms, train_count, train_shift, parameters['randomSelect'], parameters['type'], parameters)
   res_data_set = []
   for df_train, df_test, df_train_labels, df_test_labels in train_data_set:
@@ -280,8 +286,8 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
 
     is_regression = algorithmType == 2 or (algorithmType==4 and parameters.get('useSVR', False))
     
-    df_test_score = get_metrics(df_test_target, df_test_result, is_regression)
-    df_train_score = get_metrics(df_train_target, df_train_result, is_regression)
+    df_test_score = get_metrics(df_test_target, df_test_result, is_regression, train_shift)
+    df_train_score = get_metrics(df_train_target, df_train_result, is_regression, train_shift)
     N = get_x_unit(rc) # int(rc / 500.0)
     
     date_index = input_file.loc[df_test.index, 'Date']
@@ -370,8 +376,6 @@ def prepare_train(input_file, transforms, train_count, train_shift, random_selec
   df_test_index = None
 
   train_label = parameters['trainLabel']
-  if train_label == 'triple_barrier':
-    train_shift = 0
 
   if 'kFold' in parameters and parameters['kFold'] != 0:
     kf = KFold(n_splits= int(parameters['kFold']))
