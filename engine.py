@@ -299,6 +299,9 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
       res.append(df_test_target)
       res.append(df_test_result)
     
+    df_test_target_values, df_test_target_value_counts = np.unique(df_test_target, return_counts=True)
+    print(df_test_target_value_counts)
+
     res_data = [np.array(res), np.array([df_train_score, df_test_score]).T]
     res_data_set.append(res_data)
   return res_data_set
@@ -368,6 +371,10 @@ def prepare_train(input_file, transforms, train_count, train_shift, random_selec
   df_train_index = None
   df_test_index = None
 
+  train_label = parameters['trainLabel']
+  if train_label == 'triple_barrier':
+    train_shift = 0
+
   if 'kFold' in parameters and parameters['kFold'] != 0:
     kf = KFold(n_splits= int(parameters['kFold']))
     kf.get_n_splits(df1)
@@ -386,8 +393,7 @@ def prepare_train(input_file, transforms, train_count, train_shift, random_selec
       if algorithmType == 0 or algorithmType == 5:
         res.append([df_train, df_test])
         continue
-
-      train_label = parameters['trainLabel']
+      
       if train_label == '':
         return [[df_train, df_test, df_train_labels, df_test_labels]]
       df2 = pd.DataFrame(index=df.index)
@@ -430,7 +436,6 @@ def prepare_train(input_file, transforms, train_count, train_shift, random_selec
   if algorithmType == 0 or algorithmType == 5:
     return [[df_train, df_test]]
 
-  train_label = parameters['trainLabel']
   if train_label == '':
     return [[df_train, df_test, df_train_labels, df_test_labels]]
   df2 = pd.DataFrame(index=df.index)
