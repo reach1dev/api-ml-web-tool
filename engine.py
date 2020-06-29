@@ -284,7 +284,8 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     df_train_score = get_metrics(df_train_target, df_train_result, is_regression)
     N = get_x_unit(rc) # int(rc / 500.0)
     
-    res = []
+    date_index = input_file.loc[df_test.index, 'Date']
+    res = [np.array(date_index)]
     if multiple:
       col_idx = 0
       for _ in df_test_target:
@@ -295,8 +296,9 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     else:
       df_test_target = df_test_target.to_numpy()[[x for x in range(df_test_target.shape[0]) if x%N == 0]]
       df_test_result = df_test_result[[x for x in range(df_test_result.shape[0]) if x%N == 0]]
-      res = [df_test_target, df_test_result]
-
+      res.append(df_test_target)
+      res.append(df_test_result)
+    
     res_data = [np.array(res), np.array([df_train_score, df_test_score]).T]
     res_data_set.append(res_data)
   return res_data_set
@@ -486,7 +488,9 @@ def kmean_clustering(input_file, transforms, parameters, optimize):
     df_train['Tar'] = k_means.predict(df_train)
     df_test['Tar'] = k_means.predict(df_test)
     
-    graph = [np.cumsum(df0_test['Ret'].loc[df_test['Tar'] == c].to_numpy()) for c in range(0, n_clusters)]
+    date_index = input_file.loc[df_test.index, 'Date']
+    graph = [np.array(date_index)]
+    graph.extend([np.cumsum(df0_test['Ret'].loc[df_test['Tar'] == c].to_numpy()) for c in range(0, n_clusters)])
     # graph = [df_train[col].to_numpy() for col in df_test]
     # graph = [df_test.loc[df_test['Tar'] == c].to_numpy() for c in range(0, n_clusters)]
     metrics = [[df0_train['Ret'].loc[df_train['Tar'] == c].sum(), df0_test['Ret'].loc[df_test['Tar'] == c].sum()] for c in range(0, n_clusters) ]
