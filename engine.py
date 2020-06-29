@@ -299,8 +299,6 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
       res.append(df_test_target)
       res.append(df_test_result)
     
-    df_test_target_values, df_test_target_value_counts = np.unique(df_test_target, return_counts=True)
-    print(df_test_target_value_counts)
 
     res_data = [np.array(res), np.array([df_train_score, df_test_score]).T]
     res_data_set.append(res_data)
