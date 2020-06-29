@@ -28,6 +28,7 @@ from constants import get_x_unit
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import ParameterGrid
 from kneed import KneeLocator
+from sklearn.model_selection import KFold
 
 input_file = None
 
@@ -124,18 +125,20 @@ def train_and_test(input_file, transforms, parameters, optimize = False):
 def pca_analyse(input_file, transforms, parameters):
   df0 = pd.DataFrame(index=input_file.index)
   rc = df0.shape[0]
-  [df_train, _] = prepare_train(input_file, transforms, rc, 0, parameters['randomSelect'], parameters['type'], parameters)
-
-  k = df_train.shape[1]
-  pca = PCA(n_components=k)
-  pca.fit(df_train)
-  
-  metrics = np.array([pca.explained_variance_ratio_, pca.singular_values_])
-  return [metrics, metrics.T]
+  train_data_set = prepare_train(input_file, transforms, rc, 0, parameters['randomSelect'], parameters['type'], parameters)
+  res_data_set = []
+  for [df_train, _] in train_data_set:
+    k = df_train.shape[1]
+    pca = PCA(n_components=k)
+    pca.fit(df_train)
+    
+    metrics = np.array([pca.explained_variance_ratio_, pca.singular_values_])
+    res_data_set.append([metrics, metrics.T])
+  return res_data_set
 
 
 def get_metrics(y_true, y_pred, is_classification):
-  y_true = y_true[y_true.index>1]
+  y_true = y_true[y_true.index>=1]
   return [
     r2_score(y_true, y_pred) if is_classification else accuracy_score(y_true, y_pred, normalize=True) * 100,
     mean_squared_error(y_true, y_pred) if is_classification else precision_score(y_true, y_pred, average=None, zero_division=1),
@@ -151,22 +154,25 @@ def knn_optimize(input_file, transforms, parameters, algorithmType):
     train_count = parameters['trainSampleCount']
   
   train_shift = parameters['testShift']
-  df_train, df_test, df_train_labels, df_test_labels = prepare_train(input_file, transforms, train_count, train_shift, parameters['randomSelect'], parameters['type'], parameters)
-  label = parameters['trainLabel']
-  df_train_target = df_train_labels[label]
-  df_test_target = df_test_labels[label]
+  train_data_set = prepare_train(input_file, transforms, train_count, train_shift, parameters['randomSelect'], parameters['type'], parameters)
+  res_data_set = []
+  for df_train, df_test, df_train_labels, df_test_labels in train_data_set:
+    label = parameters['trainLabel']
+    df_train_target = df_train_labels[label]
+    df_test_target = df_test_labels[label]
 
-  Y = []
-  X = []
-  for k in parameters['n_neighbors']:
-    classifier = KNeighborsClassifier(n_neighbors=k, p=parameters['P'][0], metric=parameters['metric'][0])
-    classifier.fit(df_train, df_train_target)
-    score = classifier.score(df_test, df_test_target)
-    X.append(k)
-    Y.append(score)
-  kn = KneeLocator(X, Y, S=1.2, curve='convex', direction='decreasing')
-  n_neighbors = round(kn.knee, 0)
-  return [np.array([X, Y]).T, {'n_neighbors': n_neighbors, 'P': parameters['P'][0], 'metric': parameters['metric'][0]}]
+    Y = []
+    X = []
+    for k in parameters['n_neighbors']:
+      classifier = KNeighborsClassifier(n_neighbors=k, p=parameters['P'][0], metric=parameters['metric'][0])
+      classifier.fit(df_train, df_train_target)
+      score = classifier.score(df_test, df_test_target)
+      X.append(k)
+      Y.append(score)
+    kn = KneeLocator(X, Y, S=1.2, curve='convex', direction='decreasing')
+    n_neighbors = round(kn.knee, 0)
+    res_data_set.append([np.array([X, Y]).T, {'n_neighbors': n_neighbors, 'P': parameters['P'][0], 'metric': parameters['metric'][0]}])
+  return res_data_set
 
 
 def grid_optimize(input_file, transforms, parameters, algorithmType):
@@ -176,53 +182,59 @@ def grid_optimize(input_file, transforms, parameters, algorithmType):
     train_count = parameters['trainSampleCount']
   
   train_shift = parameters['testShift']
-  df_train, _, df_train_labels, _ = prepare_train(input_file, transforms, train_count, train_shift, parameters['randomSelect'], parameters['type'], parameters)
-  label = parameters['trainLabel']
-  df_train_target = df_train_labels[label]
+  train_data_set = prepare_train(input_file, transforms, train_count, train_shift, parameters['randomSelect'], parameters['type'], parameters)
+  res_data_set = []
+  for df_train, _, df_train_labels, _ in train_data_set:
+    label = parameters['trainLabel']
+    df_train_target = df_train_labels[label]
 
-  params = []
-  main_param = ''
-  if algorithmType == 3:
-    classifier = LogisticRegression()
-    main_param = 'C'
-    params = ['C', 'solver', 'penalty']
-  elif algorithmType == 4:
-    if parameters.get('useSVR', False):
-      classifier = SVR()
+    params = []
+    main_param = ''
+    if algorithmType == 3:
+      classifier = LogisticRegression()
+      main_param = 'C'
+      params = ['C', 'solver', 'penalty']
+    elif algorithmType == 4:
+      if parameters.get('useSVR', False):
+        classifier = SVR()
+      else:
+        classifier = SVC(random_state=parameters['random_state'][0])
+      main_param = 'C'
+      params = ['C', 'gamma', 'kernel', 'degree']
     else:
-      classifier = SVC(random_state=parameters['random_state'][0])
-    main_param = 'C'
-    params = ['C', 'gamma', 'kernel', 'degree']
-  else:
-    return None
+      continue
 
-  param_grid = {}
-  for p in params:
-    param_grid[p] = parameters[p]
-  gridCV = GridSearchCV(classifier, param_grid=param_grid)
-  gridCV.fit(df_train, df_train_target)
-  
-  result = []
-  k = 0
-  for idx, val in enumerate(gridCV.cv_results_['mean_test_score']):
-    if not np.isnan(val):
-      p = gridCV.cv_results_['params'][idx]
-      result.append([p[main_param], val])
-      k = k + 1
-  return [result, gridCV.best_params_]
+    param_grid = {}
+    for p in params:
+      param_grid[p] = parameters[p]
+    gridCV = GridSearchCV(classifier, param_grid=param_grid)
+    gridCV.fit(df_train, df_train_target)
+    
+    result = []
+    k = 0
+    for idx, val in enumerate(gridCV.cv_results_['mean_test_score']):
+      if not np.isnan(val):
+        p = gridCV.cv_results_['params'][idx]
+        result.append([p[main_param], val])
+        k = k + 1
+    res_data_set.append([result, gridCV.best_params_])
+  return res_data_set
 
 
 def lda_analyse(input_file, transforms, parameters):
   df0 = pd.DataFrame(index=input_file.index)
   rc = df0.shape[0]
-  [df_train, _, df_train_target, _] = prepare_train(input_file, transforms, rc, 0, parameters['randomSelect'], parameters['type'], parameters)
 
-  k = parameters['n_components']
-  lda = LinearDiscriminantAnalysis(n_components=k)
-  df_new = lda.fit_transform(df_train, df_train_target[parameters['trainLabel']])
-  metrics = np.array([lda.explained_variance_ratio_, ['' for i in range(k)]])
-  
-  return [df_new.T, metrics.T]
+  train_data_set = prepare_train(input_file, transforms, rc, 0, parameters['randomSelect'], parameters['type'], parameters)
+  res_data_set = []
+  for [df_train, _, df_train_target, _] in train_data_set:
+    k = parameters['n_components']
+    lda = LinearDiscriminantAnalysis(n_components=k)
+    df_new = lda.fit_transform(df_train, df_train_target[parameters['trainLabel']])
+    metrics = np.array([lda.explained_variance_ratio_])
+    
+    res_data_set.append([df_new.T, metrics.T])
+  return res_data_set
 
 
 def knn_classifier(input_file, transforms, parameters, algorithmType):
@@ -232,60 +244,95 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     train_count = parameters['trainSampleCount']
   
   train_shift = parameters['testShift']
-  df_train, df_test, df_train_labels, df_test_labels = prepare_train(input_file, transforms, train_count, train_shift, parameters['randomSelect'], parameters['type'], parameters)
-  label = parameters['trainLabel']
-  
-  if algorithmType == 1:
-    classifier = KNeighborsClassifier(n_neighbors=parameters['n_neighbors'])
-  elif algorithmType == 2:
-    classifier = LinearRegression()
-  elif algorithmType == 3:
-    classifier = LogisticRegression(random_state=0, solver=parameters.get('solver', 'lbfgs'), penalty=parameters.get('penalty', 'l2'))
-  elif algorithmType == 4:
-    if parameters.get('useSVR', False):
-      model = SVR(gamma=parameters.get('gamma', 'auto'), kernel=parameters.get('kernel', 'rbf'), degree=parameters.get('degree', 3))
+  train_data_set = prepare_train(input_file, transforms, train_count, train_shift, parameters['randomSelect'], parameters['type'], parameters)
+  res_data_set = []
+  for df_train, df_test, df_train_labels, df_test_labels in train_data_set:
+    label = parameters['trainLabel']
+    
+    if algorithmType == 1:
+      classifier = KNeighborsClassifier(n_neighbors=parameters['n_neighbors'])
+    elif algorithmType == 2:
+      classifier = LinearRegression()
+    elif algorithmType == 3:
+      classifier = LogisticRegression(random_state=0, solver=parameters.get('solver', 'lbfgs'), penalty=parameters.get('penalty', 'l2'))
+    elif algorithmType == 4:
+      if parameters.get('useSVR', False):
+        model = SVR(gamma=parameters.get('gamma', 'auto'), kernel=parameters.get('kernel', 'rbf'), degree=parameters.get('degree', 3))
+      else:
+        model = SVC(gamma=parameters.get('gamma', 'auto'), kernel=parameters.get('kernel', 'rbf'), degree=parameters.get('degree', 3))
+      classifier = make_pipeline(StandardScaler(), model)
+    elif algorithmType == 6:
+      classifier = LinearDiscriminantAnalysis()
+    multiple = parameters.get('multiple', False) and algorithmType == 2
+    df_train_target = df_train_labels if multiple else df_train_labels[label]
+    df_test_target = df_test_labels if multiple else df_test_labels[label]
+    if algorithmType == 3:
+      df_train_target = df_train_target.astype('int')
+      df_test_target = df_test_target.astype('int')
+    
+    classifier.fit(df_train, df_train_target)
+
+    if algorithmType == 3:
+      df_train = df_train.astype('int')
+      df_test = df_test.astype('int')
+    df_train_result = classifier.predict(df_train)
+    df_test_result = classifier.predict(df_test)
+
+    is_regression = algorithmType == 2 or (algorithmType==4 and parameters.get('useSVR', False))
+    
+    df_test_score = get_metrics(df_test_target, df_test_result, is_regression)
+    df_train_score = get_metrics(df_train_target, df_train_result, is_regression)
+    N = get_x_unit(rc) # int(rc / 500.0)
+    
+    res = []
+    if multiple:
+      col_idx = 0
+      for _ in df_test_target:
+        sel = [x for x in range(df_test_result.shape[0]) if x%N == 0]
+        res.append(df_test_target.to_numpy()[sel, col_idx])
+        res.append(df_test_result[sel, col_idx])
+        col_idx = col_idx + 1
     else:
-      model = SVC(gamma=parameters.get('gamma', 'auto'), kernel=parameters.get('kernel', 'rbf'), degree=parameters.get('degree', 3))
-    classifier = make_pipeline(StandardScaler(), model)
-  elif algorithmType == 6:
-    classifier = LinearDiscriminantAnalysis()
-  multiple = parameters.get('multiple', False) and algorithmType == 2
-  df_train_target = df_train_labels if multiple else df_train_labels[label]
-  df_test_target = df_test_labels if multiple else df_test_labels[label]
-  if algorithmType == 3:
-    df_train_target = df_train_target.astype('int')
-    df_test_target = df_test_target.astype('int')
-  
-  classifier.fit(df_train, df_train_target)
+      df_test_target = df_test_target.to_numpy()[[x for x in range(df_test_target.shape[0]) if x%N == 0]]
+      df_test_result = df_test_result[[x for x in range(df_test_result.shape[0]) if x%N == 0]]
+      res = [df_test_target, df_test_result]
 
-  if algorithmType == 3:
-    df_train = df_train.astype('int')
-    df_test = df_test.astype('int')
-  df_train_result = classifier.predict(df_train)
-  df_test_result = classifier.predict(df_test)
+    res_data = [np.array(res), np.array([df_train_score, df_test_score]).T]
+    res_data_set.append(res_data)
+  return res_data_set
 
-  is_regression = algorithmType == 2 or (algorithmType==4 and parameters.get('useSVR', False))
-  
-  df_test_score = get_metrics(df_test_target, df_test_result, is_regression)
-  df_train_score = get_metrics(df_train_target, df_train_result, is_regression)
-  N = get_x_unit(rc) # int(rc / 500.0)
-  
-  res = []
-  if multiple:
-    col_idx = 0
-    for _ in df_test_target:
-      sel = [x for x in range(df_test_result.shape[0]) if x%N == 0]
-      res.append(df_test_target.to_numpy()[sel, col_idx])
-      res.append(df_test_result[sel, col_idx])
-      col_idx = col_idx + 1
-  else:
-    df_test_target = df_test_target.to_numpy()[[x for x in range(df_test_target.shape[0]) if x%N == 0]]
-    df_test_result = df_test_result[[x for x in range(df_test_result.shape[0]) if x%N == 0]]
-    res = [df_test_target, df_test_result]
 
-  res_data = [np.array(res), np.array([df_train_score, df_test_score]).T]
-  return res_data
-  
+def triple_barrier(df, close='Close', open='Open', low='Low', high='High', up=10, dn=10, maxhold=10):
+    final_value = []
+    # Enumerate over df['Close']
+    for i, c in enumerate(df[close]):
+
+        reset = 0
+        # Set our vertical barrier based on trading location
+        days_passed = i
+        vert_barrier = min(days_passed + maxhold, i+len(df[open][i:]))
+        len_before = len(final_value)
+        # Enumerate up to the vertical barrier
+        for j, o in enumerate(df[open][i : min(days_passed + maxhold, i+len(df[open][i:]))]):
+            # If we hit bottom barrier, -1
+            if o - df[low][i+j] >= dn:
+                final_value.append(-1)
+                break
+            # Else if we hit top barrier, 1
+            elif df[high][i+j] - o >= up:
+                final_value.append(1)
+                break
+            # Else if nothing happened, keep walking forward
+            elif (j+i) < vert_barrier and reset == 0:
+                reset = 1
+            # Else if we hit our vertical barrier, 0
+            elif((j+i) >= vert_barrier-1):
+                final_value.append(0)
+                break
+        len_after = len(final_value)
+        if len_after == len_before:
+            final_value.append(0)
+    return final_value
 
 def prepare_train(input_file, transforms, train_count, train_shift, random_select, algorithmType, parameters):
   df = input_file.copy()
@@ -318,7 +365,41 @@ def prepare_train(input_file, transforms, train_count, train_shift, random_selec
   df_test = None
   df_train_index = None
   df_test_index = None
-  if random_select:
+
+  if 'kFold' in parameters and parameters['kFold'] != 0:
+    kf = KFold(n_splits= int(parameters['kFold']))
+    kf.get_n_splits(df1)
+    res = []
+    for train_index, test_index in kf.split(df1):
+      df_train_index = train_index[train_index<df1.shape[0]-train_shift]
+      df_train_index.sort()
+      df_test_index = test_index[test_index<df1.shape[0]-train_shift]
+      df_test_index.sort()
+      df_train = df1.loc[df_train_index, :]
+      df_test = df1.loc[df_test_index, :]
+      
+      df_train_labels = df1.loc[df_train_index+train_shift, :]
+      df_test_labels = df1.loc[df_test_index+train_shift, :]
+
+      if algorithmType == 0 or algorithmType == 5:
+        return df_train, df_test
+
+      train_label = parameters['trainLabel']
+      if train_label == '':
+        return [[df_train, df_test, df_train_labels, df_test_labels]]
+      df2 = pd.DataFrame(index=df.index)
+      if train_label == 'triple_barrier':
+        df2[train_label] = triple_barrier(df)
+        df2[train_label] = df2[train_label].astype('category', copy=False)
+      else:
+        df2[train_label] = df[train_label]
+      
+      df_train_labels = df2.loc[df_train_index+train_shift, :]
+      df_test_labels = df2.loc[df_test_index+train_shift, :]
+
+      res.append([df_train, df_test, df_train_labels, df_test_labels])
+    return res
+  elif random_select:
     df_train = df1.sample(n=train_count, random_state=1)
     df_train = df_train.sort_index(axis=0)
     df_train_index = df_train.index - train_shift
@@ -343,18 +424,21 @@ def prepare_train(input_file, transforms, train_count, train_shift, random_selec
   df_test_labels = df1.loc[df_test_index+train_shift, :]
 
   if algorithmType == 0 or algorithmType == 5:
-    return df_train, df_test
+    return [[df_train, df_test]]
 
-  train_label = transforms[1]['parameters']['trainLabel']
+  train_label = parameters['trainLabel']
   if train_label == '':
-    return df_train, df_test, df_train_labels, df_test_labels
+    return [[df_train, df_test, df_train_labels, df_test_labels]]
   df2 = pd.DataFrame(index=df.index)
-  df2[train_label] = df[train_label]
+  if train_label == 'triple_barrier':
+    df2[train_label] = triple_barrier(df)
+  else:
+    df2[train_label] = df[train_label]
   
   df_train_labels = df2.loc[df_train_index+train_shift, :]
   df_test_labels = df2.loc[df_test_index+train_shift, :]
 
-  return df_train, df_test, df_train_labels, df_test_labels
+  return [[df_train, df_test, df_train_labels, df_test_labels]]
 
 
 def kmean_clustering(input_file, transforms, parameters, optimize):
@@ -364,48 +448,53 @@ def kmean_clustering(input_file, transforms, parameters, optimize):
   train_count = int(rc * 0.8)
   if 'trainSampleCount' in parameters:
     train_count = parameters['trainSampleCount']
-  df_train, df_test = prepare_train(input_file, transforms, train_count, 0, parameters['randomSelect'], parameters['type'], parameters)
-  df0_train = df0.loc[df_train.index, :]
-  df0_test = df0.loc[df_test.index, :]
-
-  n_clusters = parameters['n_clusters']
-  random_state = parameters['random_state']
-  init = parameters['init']
-
-  if not optimize:
-    k_means = KMeans(n_clusters=n_clusters, random_state=random_state, init=init)
-
-  Y = []
-  X = []
-  if optimize:
-    maxY = None
-    minY = None
-    for k in n_clusters:
-      k_means = KMeans(n_clusters=k, random_state=random_state[0], init=init[0])
-      k_means.fit(df_train)
-      Y.append(float(k_means.inertia_))
-      if maxY is None or k_means.inertia_ > maxY:
-        maxY = k_means.inertia_
-      if minY is None or k_means.inertia_ < minY:
-        minY = k_means.inertia_
-      X.append(k)
-    Y = [(y-minY)/(maxY-minY) for y in Y]
-    kn = KneeLocator(X, Y, S=1.2, curve='convex', direction='decreasing')
-    n_clusters = round(kn.knee, 0)
-    k_means = KMeans(n_clusters=n_clusters, random_state=random_state[0], init=init[0])
-
-  k_means.fit(df_train)
-  df_train['Tar'] = k_means.predict(df_train)
-  df_test['Tar'] = k_means.predict(df_test)
   
-  graph = [np.cumsum(df0_test['Ret'].loc[df_test['Tar'] == c].to_numpy()) for c in range(0, n_clusters)]
-  # graph = [df_train[col].to_numpy() for col in df_test]
-  # graph = [df_test.loc[df_test['Tar'] == c].to_numpy() for c in range(0, n_clusters)]
-  metrics = [[df0_train['Ret'].loc[df_train['Tar'] == c].sum(), df0_test['Ret'].loc[df_test['Tar'] == c].sum()] for c in range(0, n_clusters) ]
-  
-  if optimize:
-    return [np.array([X, Y]).T, {'n_clusters': n_clusters, 'init': init[0], 'random_state': random_state[0]}]
-  return [graph, metrics]
+  train_data_set = prepare_train(input_file, transforms, train_count, 0, parameters['randomSelect'], parameters['type'], parameters)
+  res_data_set = []
+  for df_train, df_test in train_data_set:
+    df0_train = df0.loc[df_train.index, :]
+    df0_test = df0.loc[df_test.index, :]
+
+    n_clusters = parameters['n_clusters']
+    random_state = parameters['random_state']
+    init = parameters['init']
+
+    if not optimize:
+      k_means = KMeans(n_clusters=n_clusters, random_state=random_state, init=init)
+
+    Y = []
+    X = []
+    if optimize:
+      maxY = None
+      minY = None
+      for k in n_clusters:
+        k_means = KMeans(n_clusters=k, random_state=random_state[0], init=init[0])
+        k_means.fit(df_train)
+        Y.append(float(k_means.inertia_))
+        if maxY is None or k_means.inertia_ > maxY:
+          maxY = k_means.inertia_
+        if minY is None or k_means.inertia_ < minY:
+          minY = k_means.inertia_
+        X.append(k)
+      Y = [(y-minY)/(maxY-minY) for y in Y]
+      kn = KneeLocator(X, Y, S=1.2, curve='convex', direction='decreasing')
+      n_clusters = round(kn.knee, 0)
+      k_means = KMeans(n_clusters=n_clusters, random_state=random_state[0], init=init[0])
+
+    k_means.fit(df_train)
+    df_train['Tar'] = k_means.predict(df_train)
+    df_test['Tar'] = k_means.predict(df_test)
+    
+    graph = [np.cumsum(df0_test['Ret'].loc[df_test['Tar'] == c].to_numpy()) for c in range(0, n_clusters)]
+    # graph = [df_train[col].to_numpy() for col in df_test]
+    # graph = [df_test.loc[df_test['Tar'] == c].to_numpy() for c in range(0, n_clusters)]
+    metrics = [[df0_train['Ret'].loc[df_train['Tar'] == c].sum(), df0_test['Ret'].loc[df_test['Tar'] == c].sum()] for c in range(0, n_clusters) ]
+    
+    if optimize:
+      res_data_set.append([np.array([X, Y]).T, {'n_clusters': n_clusters, 'init': init[0], 'random_state': random_state[0]}])
+    else:
+      res_data_set.append([graph, metrics])
+  return res_data_set
 
 
 def upload_input_file(file):

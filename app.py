@@ -84,10 +84,13 @@ def inter_train(file_id, optimize = False):
     res_file_id = str(uuid.uuid4())
     def run_job(res_file_id):
         try:
-            [graph, metrics] = engine.train_and_test(input_file, transforms, parameters, optimize=optimize)
+            res_data_set = engine.train_and_test(input_file, transforms, parameters, optimize=optimize)
             with open('tmp/' + res_file_id + '.dat', 'wb') as f:
-                np.save(f, graph)
-                np.save(f, metrics)
+                header = np.array([len(res_data_set)])
+                np.save(f, np.array(header))
+                for graph, metrics in res_data_set:
+                    np.save(f, graph)
+                    np.save(f, metrics)
                 f.close()
         except Exception as e:
             print(e)
@@ -111,11 +114,16 @@ def get_train_result(res_file_id):
             return json.dumps({'err': err}, default=default), 203
     if os.path.exists(file_path):
         with open(file_path, 'rb') as f:
-            graph = np.load(f, allow_pickle=True)
-            metrics = np.load(f, allow_pickle=True)
+            header = np.load(f, allow_pickle=True)
+            res_count = header[0]
+            res_data_set = []
+            for k in range(res_count):
+                graph = np.load(f, allow_pickle=True)
+                metrics = np.load(f, allow_pickle=True)
+                res_data_set.append([graph, metrics])
             f.close()
             os.remove(file_path)
-            return json.dumps([graph, metrics], default=default)
+            return json.dumps(res_data_set, default=default)
     return '', 204
 
 
