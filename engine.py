@@ -382,7 +382,8 @@ def prepare_train(input_file, transforms, train_count, train_shift, random_selec
       df_test_labels = df1.loc[df_test_index+train_shift, :]
 
       if algorithmType == 0 or algorithmType == 5:
-        return df_train, df_test
+        res.append([df_train, df_test])
+        continue
 
       train_label = parameters['trainLabel']
       if train_label == '':
