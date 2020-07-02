@@ -61,9 +61,9 @@ def get_transform_data(file_id):
             # sel = [i%N==0 for i in range(len(output_data))]
             # output_data = output_data[sel]
         return json.dumps({'columns': columns, 'data': output_data}, default=default)
-    except:
+    except Exception as e:
         traceback.print_exc()
-        return '', 402
+        return repr(e), 203
 
 
 @app.route('/train-and-test/<file_id>', methods=['POST'])

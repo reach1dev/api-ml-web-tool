@@ -54,6 +54,10 @@ def transform_data(df, transform, parentId):
   outputs = transform['outputParameters']
   params = transform['parameters']
 
+  if tool == 114:
+    df[params['name']] = df.eval(params['expression'])
+    return df.replace([np.inf, -np.inf], np.nan).fillna(0)
+  
   for col in inputs:    
     do_fill_na = True
     if col in outputs:
@@ -85,6 +89,8 @@ def transform_data(df, transform, parentId):
         df[col_id] = turn_percentile(df[col], params['rolling'])
       elif tool == 113:
         df[col_id] = power_function(df[col], params['power'])
+      elif tool == 115:
+        df[col_id] = rolling_mean(df[col], params['rolling'])
   if do_fill_na:
     return df.fillna(0)
   return df
@@ -236,8 +242,9 @@ def lda_analyse(input_file, transforms, parameters):
     lda = LinearDiscriminantAnalysis(n_components=k)
     df_new = lda.fit_transform(df_train, df_train_target[parameters['trainLabel']])
     metrics = np.array([lda.explained_variance_ratio_])
-    
-    res_data_set.append([df_new.T, metrics.T])
+
+    date_index = input_file.loc[df_train.index, 'Date']
+    res_data_set.append([np.concatenate(([date_index], df_new.T), axis=0), metrics.T])
   return res_data_set
 
 
@@ -533,6 +540,10 @@ def standard_dataframe(df, length=20):
 def fisher_transform(df):
   # [np.log((1.0+v)/(1-v)) * .5 for v in df[col]]
   return [0 if v==1 else np.log((1.0+v)/(1-v)) * .5 for v in df]
+
+
+def rolling_mean(df, length=20):
+  return df.rolling(length).mean()
 
 
 def subtract_mean(df, length=20):
