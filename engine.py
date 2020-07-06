@@ -390,6 +390,7 @@ def prepare_train(input_file, transforms, train_count, train_shift, random_selec
   for col in input_parameters:
     if col == parameters['trainLabel']:
       df1[col] = df[col]
+      idx = idx +1
       continue
     if input_filters[idx]:
       df1[col] = df[col]
