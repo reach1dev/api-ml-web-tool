@@ -290,8 +290,9 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     else:
       df_train_target = df_train_labels[label]
       df_test_target = df_test_labels[label]
-      del df_train[label]
-      del df_test[label]
+      if label != 'triple_barrier':
+        del df_train[label]
+        del df_test[label]
     
     if algorithmType == 3:
       df_train_target = df_train_target.astype('int')
@@ -528,10 +529,16 @@ def kmean_clustering(input_file, transforms, parameters, optimize):
     # graph = [df_test.loc[df_test['Tar'] == c].to_numpy() for c in range(0, n_clusters)]
     metrics = [[df0_train['Ret'].loc[df_train['Tar'] == c].sum(), df0_test['Ret'].loc[df_test['Tar'] == c].sum()] for c in range(0, n_clusters) ]
     
+    features = []
+    if df_test.shape[1] == 3:
+      for i, j in enumerate(np.unique(df_test['Tar'])):
+        df_test_1 = df_test[df_test['Tar'] == j]
+        features.append([df_test_1.values[:, 0], df_test_1.values[:, 1]])
+    
     if optimize:
-      res_data_set.append([np.array([X, Y]).T, {'n_clusters': n_clusters, 'init': init[0], 'random_state': random_state[0]}])
+      res_data_set.append([np.array([X, Y]).T, {'n_clusters': n_clusters, 'init': init[0], 'random_state': random_state[0]}, features])
     else:
-      res_data_set.append([graph, metrics])
+      res_data_set.append([graph, metrics, features])
   return res_data_set
 
 

@@ -96,6 +96,8 @@ def inter_train(file_id, optimize = False):
                     features = []
                     if len(row) == 5:
                         [graph, metrics, cm, contours, features] = row
+                    elif len(row) == 3:
+                        [graph, metrics, features] = row
                     else:
                         [graph, metrics] = row
                     np.save(f, graph)
