@@ -388,7 +388,7 @@ def prepare_train(input_file, transforms, train_count, train_shift, random_selec
   df1 = pd.DataFrame(index=df.index)
   idx = 0
   for col in input_parameters:
-    if col == parameters['trainLabel']:
+    if algorithmType != 0 and col == parameters['trainLabel']:
       df1[col] = df[col]
       idx = idx +1
       continue
