@@ -88,9 +88,21 @@ def inter_train(file_id, optimize = False):
             with open('tmp/' + res_file_id + '.dat', 'wb') as f:
                 header = np.array([len(res_data_set)])
                 np.save(f, np.array(header))
-                for graph, metrics in res_data_set:
+                for row in res_data_set:
+                    graph = None
+                    metrics = None
+                    cm = []
+                    contours = []
+                    features = []
+                    if len(row) == 5:
+                        [graph, metrics, cm, contours, features] = row
+                    else:
+                        [graph, metrics] = row
                     np.save(f, graph)
                     np.save(f, metrics)
+                    np.save(f, cm)
+                    np.save(f, contours)
+                    np.save(f, features)
                 f.close()
         except Exception as e:
             print(e)
@@ -120,7 +132,10 @@ def get_train_result(res_file_id):
             for k in range(res_count):
                 graph = np.load(f, allow_pickle=True)
                 metrics = np.load(f, allow_pickle=True)
-                res_data_set.append([graph, metrics])
+                cm = np.load(f, allow_pickle=True)
+                contours = np.load(f, allow_pickle=True)
+                features = np.load(f, allow_pickle=True)
+                res_data_set.append([graph, metrics, cm, contours, features])
             f.close()
             os.remove(file_path)
             return json.dumps(res_data_set, default=default)

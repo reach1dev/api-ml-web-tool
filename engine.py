@@ -24,11 +24,14 @@ from sklearn.metrics import mean_squared_error
 from sklearn.metrics import explained_variance_score
 from sklearn.metrics import max_error
 from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import confusion_matrix
 from constants import get_x_unit
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import ParameterGrid
 from kneed import KneeLocator
 from sklearn.model_selection import KFold
+from skimage import measure
+from sklearn.utils import resample
 
 input_file = None
 
@@ -143,14 +146,17 @@ def pca_analyse(input_file, transforms, parameters):
   return res_data_set
 
 
-def get_metrics(y_true, y_pred, is_classification, train_shift):
+def get_metrics(y_true, y_pred, is_regression, train_shift, algorithmType):
   y_true = y_true[y_true.index>=train_shift]
+  cm = []
+  if algorithmType != 2:
+    cm = confusion_matrix(y_true, y_pred)
   return [
-    r2_score(y_true, y_pred) if is_classification else accuracy_score(y_true, y_pred, normalize=True) * 100,
-    mean_squared_error(y_true, y_pred) if is_classification else precision_score(y_true, y_pred, average=None, zero_division=1),
-    mean_absolute_error(y_true, y_pred) if is_classification else recall_score(y_true, y_pred, average=None, zero_division=1),
-    explained_variance_score(y_true, y_pred) if is_classification else f1_score(y_true, y_pred, average=None, zero_division=1)
-  ]
+    r2_score(y_true, y_pred) if is_regression else accuracy_score(y_true, y_pred, normalize=True) * 100,
+    mean_squared_error(y_true, y_pred) if is_regression else precision_score(y_true, y_pred, average=None, zero_division=1),
+    mean_absolute_error(y_true, y_pred) if is_regression else recall_score(y_true, y_pred, average=None, zero_division=1),
+    explained_variance_score(y_true, y_pred) if is_regression else f1_score(y_true, y_pred, average=None, zero_division=1)
+  ], cm
 
 
 def knn_optimize(input_file, transforms, parameters, algorithmType):
@@ -293,8 +299,8 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
 
     is_regression = algorithmType == 2 or (algorithmType==4 and parameters.get('useSVR', False))
     
-    df_test_score = get_metrics(df_test_target, df_test_result, is_regression, train_shift)
-    df_train_score = get_metrics(df_train_target, df_train_result, is_regression, train_shift)
+    df_test_score, df_test_cm = get_metrics(df_test_target, df_test_result, is_regression, train_shift, algorithmType)
+    df_train_score, _ = get_metrics(df_train_target, df_train_result, is_regression, train_shift, algorithmType)
     N = get_x_unit(rc) # int(rc / 500.0)
     
     date_index = input_file.loc[df_test.index, 'Date']
@@ -312,8 +318,11 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
       res.append(df_test_target)
       res.append(df_test_result)
     
+    contours, features = [[], []]
+    if df_test.shape[1] == 2:
+      contours, features = get_decision_boundaries(classifier, df_test.values, df_test_target, 100)
 
-    res_data = [np.array(res), np.array([df_train_score, df_test_score]).T]
+    res_data = [np.array(res), np.array([df_train_score, df_test_score]).T, df_test_cm, contours, features]
     res_data_set.append(res_data)
   return res_data_set
 
@@ -516,6 +525,26 @@ def kmean_clustering(input_file, transforms, parameters, optimize):
     else:
       res_data_set.append([graph, metrics])
   return res_data_set
+
+
+def get_decision_boundaries(classifier, X_set, y_set, num_points_to_plot):
+  X1, X2 = np.meshgrid(
+    np.linspace(start=X_set[:, 0].min(), stop=X_set[:, 0].max(), num=num_points_to_plot),
+    np.linspace(start=X_set[:, 1].min(), stop=X_set[:, 1].max(), num=num_points_to_plot))
+  r = classifier.predict(np.array([X1.ravel(), X2.ravel()]).T)
+  r1 = r.reshape(X1.shape)
+
+  contours = measure.find_contours(r1, 0)
+
+  X_set, y_set = resample(X_set, y_set, n_samples=num_points_to_plot, stratify=y_set, replace=False)
+  # contours = []
+  # for i, j in enumerate(np.unique(y_set)):
+  #   contours.append([X1[r1 == j], X2[r1 == j]])
+  
+  features = []
+  for i, j in enumerate(np.unique(y_set)):
+    features.append([X_set[y_set == j, 1], X_set[y_set == j, 0]])
+  return contours, features
 
 
 def upload_input_file(file):
