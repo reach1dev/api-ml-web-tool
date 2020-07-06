@@ -283,8 +283,16 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     elif algorithmType == 6:
       classifier = LinearDiscriminantAnalysis()
     multiple = parameters.get('multiple', False) and algorithmType == 2
-    df_train_target = df_train_labels if multiple else df_train_labels[label]
-    df_test_target = df_test_labels if multiple else df_test_labels[label]
+
+    if multiple:
+      df_train_target = df_train_labels
+      df_test_target = df_test_labels
+    else:
+      df_train_target = df_train_labels[label]
+      df_test_target = df_test_labels[label]
+      del df_train[label]
+      del df_test[label]
+    
     if algorithmType == 3:
       df_train_target = df_train_target.astype('int')
       df_test_target = df_test_target.astype('int')
@@ -319,7 +327,7 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
       res.append(df_test_result)
     
     contours, features = [[], []]
-    if df_test.shape[1] == 2 and label == 'triple_barrier':
+    if df_test.shape[1] == 2: # and label == 'triple_barrier':
       contours, features = get_decision_boundaries(classifier, df_test.values, df_test_target, 100)
 
     res_data = [np.array(res), np.array([df_train_score, df_test_score]).T, df_test_cm, contours, features]
