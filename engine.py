@@ -153,9 +153,9 @@ def get_metrics(y_true, y_pred, is_regression, train_shift, algorithmType):
     cm = confusion_matrix(y_true, y_pred)
   return [
     r2_score(y_true, y_pred) if is_regression else accuracy_score(y_true, y_pred, normalize=True) * 100,
-    mean_squared_error(y_true, y_pred) if is_regression else precision_score(y_true, y_pred, average=None, zero_division=1),
-    mean_absolute_error(y_true, y_pred) if is_regression else recall_score(y_true, y_pred, average=None, zero_division=1),
-    explained_variance_score(y_true, y_pred) if is_regression else f1_score(y_true, y_pred, average=None, zero_division=1)
+    mean_squared_error(y_true, y_pred) if is_regression else precision_score(y_true, y_pred, average=None, zero_division=1) * 100,
+    mean_absolute_error(y_true, y_pred) if is_regression else recall_score(y_true, y_pred, average=None, zero_division=1) * 100,
+    explained_variance_score(y_true, y_pred) if is_regression else f1_score(y_true, y_pred, average=None, zero_division=1) * 100
   ], cm
 
 
