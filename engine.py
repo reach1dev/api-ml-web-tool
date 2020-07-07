@@ -141,7 +141,7 @@ def pca_analyse(input_file, transforms, parameters):
     pca = PCA(n_components=k)
     pca.fit(df_train)
     
-    metrics = np.array([pca.explained_variance_ratio_, pca.singular_values_])
+    metrics = np.array([pca.explained_variance_ratio_*100, pca.singular_values_])
     res_data_set.append([metrics, metrics.T])
   return res_data_set
 
@@ -247,7 +247,7 @@ def lda_analyse(input_file, transforms, parameters):
     k = parameters['n_components']
     lda = LinearDiscriminantAnalysis(n_components=k)
     df_new = lda.fit_transform(df_train, df_train_target[parameters['trainLabel']])
-    metrics = np.array([lda.explained_variance_ratio_])
+    metrics = np.array([lda.explained_variance_ratio_*100])
 
     date_index = input_file.loc[df_train.index, 'Date']
     res_data_set.append([np.concatenate(([date_index], df_new.T), axis=0), metrics.T])
@@ -524,7 +524,7 @@ def kmean_clustering(input_file, transforms, parameters, optimize):
     df_test['Tar'] = k_means.predict(df_test)
     
     date_index = input_file.loc[df_test.index, 'Date']
-    graph = [np.array(date_index)]
+    graph = [] #np.array(date_index)
     graph.extend([np.cumsum(df0_test['Ret'].loc[df_test['Tar'] == c].to_numpy()) for c in range(0, n_clusters)])
     # graph = [df_train[col].to_numpy() for col in df_test]
     # graph = [df_test.loc[df_test['Tar'] == c].to_numpy() for c in range(0, n_clusters)]
