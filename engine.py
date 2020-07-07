@@ -108,7 +108,12 @@ def do_transforms(transform, df):
     X1 = transform_data(X, child, transform['id'])
     X2 =  do_transforms(child, X1)
     if X2 is not None:
-      Y = pd.concat([Y, X2], axis=1)
+      common_cols = list(set.intersection(*(set(x.columns) for x in [Y, X2])))
+      new_cols = []
+      for c in X2:
+        if c not in common_cols:
+          new_cols.append(c)
+      Y = pd.concat([Y, X2[new_cols]], join='inner', axis=1)
   return Y
 
 
@@ -525,7 +530,8 @@ def kmean_clustering(input_file, transforms, parameters, optimize):
     
     date_index = input_file.loc[df_test.index, 'Date']
     graph = [] #np.array(date_index)
-    graph.extend([np.cumsum(df0_test['Ret'].loc[df_test['Tar'] == c].to_numpy()) for c in range(0, n_clusters)])
+    df0_test_ = df0_test['Ret'][:df0_test.shape[0]-2]
+    graph.extend([np.cumsum(df0_test_.loc[df_test['Tar'] == c].to_numpy()) for c in range(0, n_clusters)])
     # graph = [df_train[col].to_numpy() for col in df_test]
     # graph = [df_test.loc[df_test['Tar'] == c].to_numpy() for c in range(0, n_clusters)]
     metrics = [[df0_train['Ret'].loc[df_train['Tar'] == c].sum(), df0_test['Ret'].loc[df_test['Tar'] == c].sum()] for c in range(0, n_clusters) ]
