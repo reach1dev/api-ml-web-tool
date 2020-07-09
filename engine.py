@@ -258,7 +258,7 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     res.append(df_test_result)
     
     contours, features = [[], []]
-    if df_test.shape[1] == 2 or (label != 'triple_barrier' and df_test.shape[1] == 3):
+    if not is_regression and (df_test.shape[1] == 2 or (label != 'triple_barrier' and df_test.shape[1] == 3)):
       contours, features = get_decision_boundaries(classifier, df_test.values, df_test_target, 100)
 
     res_data = [np.array(res), np.array([df_train_score, df_test_score]).T, df_test_cm, contours, features]
