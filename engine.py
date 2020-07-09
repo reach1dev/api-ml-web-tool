@@ -225,13 +225,17 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
       
     df_train_target = df_train_labels[label]
     df_test_target = df_test_labels[label]
-    if label != 'triple_barrier' and algorithmType != 4:
-      del df_train[label]
-      del df_test[label]
-    
-    if algorithmType == 1 or algorithmType == 3 or algorithmType == 4:
+    is_regression = algorithmType == 2 or (algorithmType==4 and parameters.get('useSVR', False))
+
+    if label != 'triple_barrier' and not is_regression:
       df_train_target = df_train_target.astype('int').astype('category')
       df_test_target = df_test_target.astype('int').astype('category')
+    
+    for idx, col in enumerate(parameters['features']):
+      if col == label and parameters['inputFilters'][idx] == False:
+        del df_train[label]
+        del df_test[label]
+        break
     
     classifier.fit(df_train, df_train_target)
 
@@ -240,8 +244,6 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     #   df_test = df_test.astype('int').astype('category')
     df_train_result = classifier.predict(df_train)
     df_test_result = classifier.predict(df_test)
-
-    is_regression = algorithmType == 2 or (algorithmType==4 and parameters.get('useSVR', False))
     
     df_test_score, df_test_cm = get_metrics(df_test_target, df_test_result, is_regression, train_shift, algorithmType)
     df_train_score, _ = get_metrics(df_train_target, df_train_result, is_regression, train_shift, algorithmType)
@@ -256,7 +258,7 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     res.append(df_test_result)
     
     contours, features = [[], []]
-    if df_test.shape[1] == 2: # and label == 'triple_barrier':
+    if df_test.shape[1] == 2 or (label != 'triple_barrier' and df_test.shape[1] == 3):
       contours, features = get_decision_boundaries(classifier, df_test.values, df_test_target, 100)
 
     res_data = [np.array(res), np.array([df_train_score, df_test_score]).T, df_test_cm, contours, features]
