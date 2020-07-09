@@ -17,6 +17,7 @@ import os, time, sys
 from datetime import datetime
 import threading
 from constants import get_x_unit
+from transformations import transform_data
 
 
 app = Flask(__name__)
@@ -51,7 +52,7 @@ def get_transform_data(file_id):
             if transform['id'] == 1000:
                 output_data = df.copy()
             else:
-                output_data = engine.transform_data(output_data, transform, last_transform['id'])
+                output_data = transform_data(output_data, transform, last_transform['id'])
         
         columns = []
         if output_data is not None:
@@ -149,7 +150,7 @@ def upload_input_data():
     file = request.files['file']
     try:
         file_id = str(uuid.uuid4())
-        df = pd.read_csv (file, index_col='Date')
+        df = pd.read_csv (file, index_col=0)
         df.to_csv(file_name(file_id))
         path, dirs, files = next(os.walk("tmp"))
         files = [ fi for fi in files if not fi.endswith(".csv") ]
@@ -159,7 +160,7 @@ def upload_input_data():
                 if f.endswith(".csv") and os.stat(os.path.join(path,f)).st_mtime < datetime.now().timestamp() - 60*60:
                     os.remove(os.path.join('tmp/', f))
 
-        return json.dumps({'file_id': file_id, 'columns': df.columns.values, 'sample_count': len(df)}, default=default), 200
+        return json.dumps({'file_id': file_id, 'index': df.index.name, 'columns': df.columns.values, 'sample_count': len(df)}, default=default), 200
     except Exception as e:
         print(e)
         return '', 400

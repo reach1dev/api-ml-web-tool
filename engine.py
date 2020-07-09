@@ -32,6 +32,7 @@ from kneed import KneeLocator
 from sklearn.model_selection import KFold
 from skimage import measure
 from sklearn.utils import resample
+from transformations import do_transforms
 
 input_file = None
 
@@ -49,72 +50,6 @@ def split_param(str):
     elif len(p) == 3:
       params = params + list(range(int(p[0]), int(p[1]), int(p[2])))
   return params
-
-
-def transform_data(df, transform, parentId):
-  tool = transform['tool']['id']
-  inputs = transform['inputParameters']
-  outputs = transform['outputParameters']
-  params = transform['parameters']
-
-  if tool == 114:
-    df[params['name']] = df.eval(params['expression'])
-    return df.replace([np.inf, -np.inf], np.nan).fillna(0)
-  
-  for col in inputs:    
-    do_fill_na = True
-    if col in outputs:
-      col_id = outputs[col]
-      if tool == 101:
-        df[col_id] = normalize_dataframe(df[col], params['rolling'], params['min'], params['max'])
-      elif tool == 102:
-        df[col_id] = standard_dataframe(df[col], params['rolling'])
-      elif tool == 103:
-        df[col_id] = fisher_transform(df[col])
-      elif tool == 104:
-        df[col_id] = subtract_median(df[col], params['rolling'])
-      elif tool == 105:
-        df[col_id] = subtract_mean(df[col], params['rolling'])
-      elif tool == 106:
-        df[col_id] = first_diff(df[col], params['shift'])
-      elif tool == 107:
-        df[col_id] = percent_return(df[col], params['shift'])
-      elif tool == 108:
-        df[col_id] = log_return(df[col], params['shift'])
-      elif tool == 109:
-        df[col_id] = clip_dataframe(df[col], params['min'], params['max'], params['scale'])
-      elif tool == 110:
-        do_fill_na = False
-        df[col_id] = turn_categorical(df[col])
-      elif tool == 111:
-        df[col_id] = turn_ranking(df[col])
-      elif tool == 112:
-        df[col_id] = turn_percentile(df[col], params['rolling'])
-      elif tool == 113:
-        df[col_id] = power_function(df[col], params['power'])
-      elif tool == 115:
-        df[col_id] = rolling_mean(df[col], params['rolling'])
-  if do_fill_na:
-    return df.fillna(0)
-  return df
-
-
-def do_transforms(transform, df):
-  Y = pd.DataFrame(index=df.index)
-  if 'children' not in transform:
-    return df
-  for child in transform['children']:
-    X = df.copy()
-    X1 = transform_data(X, child, transform['id'])
-    X2 =  do_transforms(child, X1)
-    if X2 is not None:
-      common_cols = list(set.intersection(*(set(x.columns) for x in [Y, X2])))
-      new_cols = []
-      for c in X2:
-        if c not in common_cols:
-          new_cols.append(c)
-      Y = pd.concat([Y, X2[new_cols]], join='inner', axis=1)
-  return Y
 
 
 def train_and_test(input_file, transforms, parameters, optimize = False):
@@ -154,7 +89,7 @@ def pca_analyse(input_file, transforms, parameters):
 def get_metrics(y_true, y_pred, is_regression, train_shift, algorithmType):
   y_true = y_true[y_true.index>=train_shift]
   cm = []
-  if algorithmType != 2:
+  if algorithmType != 2 and not is_regression:
     cm = confusion_matrix(y_true, y_pred)
   return [
     r2_score(y_true, y_pred) if is_regression else accuracy_score(y_true, y_pred, normalize=True) * 100,
@@ -284,30 +219,25 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
         model = SVR(gamma=parameters.get('gamma', 'auto'), kernel=parameters.get('kernel', 'rbf'), degree=parameters.get('degree', 3))
       else:
         model = SVC(gamma=parameters.get('gamma', 'auto'), kernel=parameters.get('kernel', 'rbf'), degree=parameters.get('degree', 3))
-      classifier = make_pipeline(StandardScaler(), model)
+      classifier = model #make_pipeline(StandardScaler(), model)
     elif algorithmType == 6:
       classifier = LinearDiscriminantAnalysis()
-    multiple = parameters.get('multiple', False) and algorithmType == 2
-
-    if multiple:
-      df_train_target = df_train_labels
-      df_test_target = df_test_labels
-    else:
-      df_train_target = df_train_labels[label]
-      df_test_target = df_test_labels[label]
-      if label != 'triple_barrier':
-        del df_train[label]
-        del df_test[label]
+      
+    df_train_target = df_train_labels[label]
+    df_test_target = df_test_labels[label]
+    if label != 'triple_barrier' and algorithmType != 4:
+      del df_train[label]
+      del df_test[label]
     
-    if algorithmType == 3:
-      df_train_target = df_train_target.astype('int')
-      df_test_target = df_test_target.astype('int')
+    if algorithmType == 1 or algorithmType == 3 or algorithmType == 4:
+      df_train_target = df_train_target.astype('int').astype('category')
+      df_test_target = df_test_target.astype('int').astype('category')
     
     classifier.fit(df_train, df_train_target)
 
-    if algorithmType == 3:
-      df_train = df_train.astype('int')
-      df_test = df_test.astype('int')
+    # if algorithmType == 3 or algorithmType == 4:
+    #   df_train = df_train.astype('int').astype('category')
+    #   df_test = df_test.astype('int').astype('category')
     df_train_result = classifier.predict(df_train)
     df_test_result = classifier.predict(df_test)
 
@@ -319,21 +249,14 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     
     date_index = input_file.loc[df_test.index, 'Date']
     res = [np.array(date_index)]
-    if multiple:
-      col_idx = 0
-      for _ in df_test_target:
-        sel = [x for x in range(df_test_result.shape[0]) if x%N == 0]
-        res.append(df_test_target.to_numpy()[sel, col_idx])
-        res.append(df_test_result[sel, col_idx])
-        col_idx = col_idx + 1
-    else:
-      df_test_target = df_test_target.to_numpy()[[x for x in range(df_test_target.shape[0]) if x%N == 0]]
-      df_test_result = df_test_result[[x for x in range(df_test_result.shape[0]) if x%N == 0]]
-      res.append(df_test_target)
-      res.append(df_test_result)
+    
+    df_test_target = df_test_target.to_numpy()[[x for x in range(df_test_target.shape[0]) if x%N == 0]]
+    df_test_result = df_test_result[[x for x in range(df_test_result.shape[0]) if x%N == 0]]
+    res.append(df_test_target)
+    res.append(df_test_result)
     
     contours, features = [[], []]
-    if df_test.shape[1] == 2 and not multiple: # and label == 'triple_barrier':
+    if df_test.shape[1] == 2: # and label == 'triple_barrier':
       contours, features = get_decision_boundaries(classifier, df_test.values, df_test_target, 100)
 
     res_data = [np.array(res), np.array([df_train_score, df_test_score]).T, df_test_cm, contours, features]
@@ -375,8 +298,10 @@ def triple_barrier(df, up=10, dn=10, maxhold=10, close='Close', high='High', ope
 
 def prepare_train(input_file, transforms, train_count, train_shift, random_select, algorithmType, parameters):
   df = input_file.copy()
-  del df['Date']
-  del df['Time']
+  if 'Date' in input_file:
+    del df['Date']
+  if 'Time' in input_file:
+    del df['Time']
 
   for transform in transforms:
     for tr in transforms:
@@ -407,6 +332,9 @@ def prepare_train(input_file, transforms, train_count, train_shift, random_selec
   df_test_index = None
 
   train_label = parameters['trainLabel']
+
+  if 'disableSplit' in parameters and parameters['disableSplit']:
+    return [[df1, None]]
 
   if 'kFold' in parameters and parameters['kFold'] != 0:
     kf = KFold(n_splits= int(parameters['kFold']))
@@ -486,7 +414,8 @@ def prepare_train(input_file, transforms, train_count, train_shift, random_selec
 
 def kmean_clustering(input_file, transforms, parameters, optimize):
   df0 = pd.DataFrame(index=input_file.index)
-  df0['Ret'] = input_file.Open.shift(-2, fill_value=0) - input_file.Open.shift(-1, fill_value=0)
+  if 'Open' in input_file:
+    df0['Ret'] = input_file.Open.shift(-2, fill_value=0) - input_file.Open.shift(-1, fill_value=0)
   rc = df0.shape[0]
   train_count = int(rc * 0.8)
   if 'trainSampleCount' in parameters:
@@ -495,6 +424,10 @@ def kmean_clustering(input_file, transforms, parameters, optimize):
   train_data_set = prepare_train(input_file, transforms, train_count, 0, parameters['randomSelect'], parameters['type'], parameters)
   res_data_set = []
   for df_train, df_test in train_data_set:
+    noSplit = False
+    if df_test is None:
+      df_test =df_train
+      noSplit = True
     df0_train = df0.loc[df_train.index, :]
     df0_test = df0.loc[df_test.index, :]
 
@@ -526,20 +459,25 @@ def kmean_clustering(input_file, transforms, parameters, optimize):
 
     k_means.fit(df_train)
     df_train['Tar'] = k_means.predict(df_train)
-    df_test['Tar'] = k_means.predict(df_test)
-    
-    date_index = input_file.loc[df_test.index, 'Date']
-    graph = [] #np.array(date_index)
-    df0_test_ = df0_test['Ret'][:df0_test.shape[0]-2]
-    graph.extend([np.cumsum(np.insert(df0_test_.loc[df_test['Tar'] == c].to_numpy(), 0, 0)) for c in range(0, n_clusters)])
+    if not noSplit:
+      df_test['Tar'] = k_means.predict(df_test)
+    graph = []
+
+    if 'Open' in input_file:
+      df0_test_ = df0_test['Ret'][:df0_test.shape[0]-2]
+      graph.extend([np.cumsum(np.insert(df0_test_.loc[df_test['Tar'] == c].to_numpy(), 0, 0)) for c in range(0, n_clusters)])
+    # graph.extend([np.insert(df0_test_.loc[df_test['Tar'] == c].to_numpy(), 0, 0) for c in range(0, n_clusters)])
     # graph = [df_train[col].to_numpy() for col in df_test]
     # graph = [df_test.loc[df_test['Tar'] == c].to_numpy() for c in range(0, n_clusters)]
-    metrics = [[df0_train['Ret'].loc[df_train['Tar'] == c].sum(), df0_test['Ret'].loc[df_test['Tar'] == c].sum()] for c in range(0, n_clusters) ]
+    if 'Open' in input_file:
+      metrics = [[df0_train['Ret'].loc[df_train['Tar'] == c].sum(), df0_test['Ret'].loc[df_test['Tar'] == c].sum()] for c in range(0, n_clusters) ]
+    else:
+      metrics = []
     
     features = []
     if df_test.shape[1] == 3:
-      for i, j in enumerate(np.unique(df_test['Tar'])):
-        df_test_1 = df_test[df_test['Tar'] == j]
+      for c in range(0, n_clusters):
+        df_test_1 = df_test[df_test['Tar'] == c]
         features.append([df_test_1.values[:, 0], df_test_1.values[:, 1]])
     
     if optimize:
@@ -565,7 +503,7 @@ def get_decision_boundaries(classifier, X_set, y_set, num_points_to_plot):
   
   features = []
   for i, j in enumerate(np.unique(y_set)):
-    features.append([X_set[y_set == j, 1], X_set[y_set == j, 0]])
+    features.append([X_set[y_set == j, 0], X_set[y_set == j, 1]])
   return contours, features
 
 
@@ -576,77 +514,3 @@ def upload_input_file(file):
     return True
   except:
     return False
-
-
-def normalize_dataframe(df, length=20, min=0, max=1):
-  df_cr = df.rolling(length)
-  return (((df - df_cr.min()) / (df_cr.max() - df_cr.min())) * (max-min) + min).fillna(0)
-
-
-def standard_dataframe(df, length=20):
-  df_cr = df.rolling(length)
-  return (df - df_cr.mean()) / df_cr.std().fillna(0)
-
-
-def fisher_transform(df):
-  # [np.log((1.0+v)/(1-v)) * .5 for v in df[col]]
-  return [0 if v==1 else np.log((1.0+v)/(1-v)) * .5 for v in df]
-
-
-def rolling_mean(df, length=20):
-  return df.rolling(length).mean()
-
-
-def subtract_mean(df, length=20):
-  df_cr = df.rolling(length)
-  return df-df_cr.mean()
-
-
-def subtract_median(df, length=20):
-  df_cr = df.rolling(length)
-  return df-df_cr.median()
-
-
-def first_diff(df, length=1):
-  return df - df.shift(length)
-
-
-def percent_return(df, length=1):
-  return ((df - df.shift(length))/df.shift(length)) * 100.0
-
-
-def log_return(df, length=1):
-  # np.log(df['Close']/df['Close'].shift(x))
-  return np.log(df / (df.shift(length))).replace(np.inf, 0).replace(-np.inf, 0)
-
-
-def clip_dataframe(df, min, max, scale=1):
-  return df.clip(min, max) * scale
-
-
-def turn_categorical(df):
-  df1 = df.astype('int')
-  df2 = df1 - df1.min()
-  return df2.astype('category', copy=False)
-
-def turn_ranking(df):
-  return df.rank()
-
-
-def turn_percentile(df, length=20):
-  if length <= 0:
-    return [df[x] / df[:x+1].max() * 100 for x in range(0, df.shape[0])]
-  return [df[x] / df[x-length:x+1].max() * 100 for x in range(0, df.shape[0])]
-
-
-def power_function(df, function):
-  if function == 'square':
-    return df**2
-  elif function == 'cube':
-    return df**3
-  elif function == 'square_root':
-    return df**0.5
-  elif function == 'cube_root':
-    return df**(1/3)
-  else:
-    return df**float(function)
