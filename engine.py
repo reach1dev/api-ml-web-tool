@@ -258,7 +258,7 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     res.append(df_test_result)
     
     contours, features = [[], []]
-    if not is_regression and (df_test.shape[1] == 2 or (label != 'triple_barrier' and df_test.shape[1] == 3)):
+    if not is_regression and df_test.shape[1] == 2: #  or (label != 'triple_barrier' and df_test.shape[1] == 3)
       contours, features = get_decision_boundaries(classifier, df_test.values, df_test_target, 100)
 
     res_data = [np.array(res), np.array([df_train_score, df_test_score]).T, df_test_cm, contours, features]
@@ -466,13 +466,13 @@ def kmean_clustering(input_file, transforms, parameters, optimize):
     graph = []
 
     if 'Open' in input_file:
-      df0_test_ = df0_test['Ret'][:df0_test.shape[0]-2]
+      df0_test_ = df0_test['Ret'][df0_test.index<df0.shape[0]-2]
       graph.extend([np.cumsum(np.insert(df0_test_.loc[df_test['Tar'] == c].to_numpy(), 0, 0)) for c in range(0, n_clusters)])
     # graph.extend([np.insert(df0_test_.loc[df_test['Tar'] == c].to_numpy(), 0, 0) for c in range(0, n_clusters)])
     # graph = [df_train[col].to_numpy() for col in df_test]
     # graph = [df_test.loc[df_test['Tar'] == c].to_numpy() for c in range(0, n_clusters)]
     if 'Open' in input_file:
-      metrics = [[df0_train['Ret'].loc[df_train['Tar'] == c].sum(), df0_test['Ret'].loc[df_test['Tar'] == c].sum()] for c in range(0, n_clusters) ]
+      metrics = [[df0_train['Ret'][df0_train.index<df0.shape[0]-2].loc[df_train['Tar'] == c].sum(), df0_test_.loc[df_test['Tar'] == c].sum()] for c in range(0, n_clusters) ]
     else:
       metrics = []
     
