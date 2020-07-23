@@ -223,7 +223,7 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     N = 1 # int(rc / 500.0)
     
     date_index = input_file.loc[df_test.index, 'Date']
-    date_index = ['2021-01-01' if x is np.nan else x for x in date_index]
+    date_index = date_index.fillna(date_index.max())
     res = [np.array(date_index)]
     
     df_test_target = df_test_target.to_numpy()[[x for x in range(df_test_target.shape[0]) if x%N == 0]]
@@ -235,7 +235,7 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     if not is_regression and df_test.shape[1] == 2: #  or (label != 'triple_barrier' and df_test.shape[1] == 3)
       contours, features = get_decision_boundaries(classifier, df_test.values, df_test_target, 100)
 
-    res = np.nan_to_num(np.array(res))
+    res = np.array(res)
     res_data = [res, np.array([df_train_score, df_test_score]).T, df_test_cm, contours, features]
     res_data_set.append(res_data)
   return res_data_set
