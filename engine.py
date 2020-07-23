@@ -219,7 +219,7 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     
     test_shift = parameters['testShift'] if parameters['trainLabel'] != 'triple_barrier' else 0
     df_test_score, df_test_cm = get_metrics(df_test_target, df_test_result, is_regression, test_shift, algorithmType)
-    df_train_score, df_train_cm = get_metrics(df_train_target, df_train_result, is_regression, test_shift, algorithmType)
+    df_train_score, _ = get_metrics(df_train_target, df_train_result, is_regression, test_shift, algorithmType)
     N = 1 # int(rc / 500.0)
     
     date_index = input_file.loc[df_test.index, 'Date']
@@ -236,7 +236,7 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
       contours, features = get_decision_boundaries(classifier, df_test.values, df_test_target, 100)
 
     res = np.nan_to_num(np.array(res))
-    res_data = [res, np.array([df_train_score, df_test_score]).T, [df_test_cm, df_train_cm], contours, features]
+    res_data = [res, np.array([df_train_score, df_test_score]).T, df_test_cm, contours, features]
     res_data_set.append(res_data)
   return res_data_set
 
