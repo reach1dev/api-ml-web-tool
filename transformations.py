@@ -2,14 +2,15 @@ import pandas as pd
 import numpy as np
 
 
-def do_transforms(transform, df):
+
+def do_transforms(transform, df, trained_params):
   Y = pd.DataFrame(index=df.index)
   if 'children' not in transform:
-    return df
+    return df, trained_params
   for child in transform['children']:
     X = df.copy()
-    X1 = transform_data(X, child, transform['id'])
-    X2 =  do_transforms(child, X1)
+    X1, trained_params = transform_data(X, child, transform['id'], trained_params)
+    X2, trained_params =  do_transforms(child, X1, trained_params)
     if X2 is not None:
       common_cols = list(set.intersection(*(set(x.columns) for x in [Y, X2])))
       new_cols = []
@@ -17,10 +18,10 @@ def do_transforms(transform, df):
         if c not in common_cols:
           new_cols.append(c)
       Y = pd.concat([Y, X2[new_cols]], join='inner', axis=1)
-  return Y
+  return Y, trained_params
 
 
-def transform_data(df, transform, parentId):
+def transform_data(df, transform, parentId, trained_params):
   tool = transform['tool']['id']
   inputs = transform['inputParameters']
   outputs = transform['outputParameters']
@@ -31,20 +32,23 @@ def transform_data(df, transform, parentId):
     return df.replace([np.inf, -np.inf], np.nan).fillna(0)
   
   rolling = params['rolling'] if 'rolling' in params else None
+  tid = transform['id']
+  if tid not in trained_params:
+    trained_params[tid] = {}
   for col in inputs:    
     do_fill_na = True
     if col in outputs:
       col_id = outputs[col]
       if tool == 101:
-        df[col_id] = normalize_dataframe(df[col], rolling, params['min'], params['max'])
+        df[col_id], trained_params[tid] = normalize_dataframe(df[col], rolling, params['min'], params['max'], trained_params[tid])
       elif tool == 102:
-        df[col_id] = standard_dataframe(df[col], rolling)
+        df[col_id], trained_params[tid] = standard_dataframe(df[col], rolling, trained_params[tid])
       elif tool == 103:
         df[col_id] = fisher_transform(df[col])
       elif tool == 104:
-        df[col_id] = subtract_median(df[col], rolling)
+        df[col_id], trained_params[tid] = subtract_median(df[col], rolling, trained_params[tid])
       elif tool == 105:
-        df[col_id] = subtract_mean(df[col], rolling)
+        df[col_id], trained_params[tid] = subtract_mean(df[col], rolling, trained_params[tid])
       elif tool == 106:
         df[col_id] = first_diff(df[col], params['shift'])
       elif tool == 107:
@@ -63,21 +67,29 @@ def transform_data(df, transform, parentId):
       elif tool == 113:
         df[col_id] = power_function(df[col], params['power'])
       elif tool == 115:
-        df[col_id] = rolling_mean(df[col], rolling)
+        df[col_id], trained_params[tid] = rolling_mean(df[col], rolling, trained_params[tid])
   if do_fill_na:
-    return df.fillna(0)
-  return df
+    return df.fillna(0), trained_params
+  return df, trained_params
 
 
-def normalize_dataframe(df, length=20, min=0, max=1):
+def normalize_dataframe(df, length=20, min=0, max=1, rp={}):
   df_cr = df.rolling(length) if length is not None else df
-  return (((df - df_cr.min()) / (df_cr.max() - df_cr.min())) * (max-min) + min).fillna(0)
+  if 'min' not in rp:
+    rp['min'] = df_cr.min()
+  if 'max' not in rp:
+    rp['max'] = df_cr.max()
+  return (((df - rp['min']) / (rp['max'] - rp['min'])) * (max-min) + min).fillna(0), rp
 
 
-def standard_dataframe(df, length=20):
+def standard_dataframe(df, length=20, rp={}):
   df_cr = df.rolling(length) if length is not None else df
-  df_res = (df - df_cr.mean()) / df_cr.std()
-  return df_res if length is None else df_res.fillna(0)
+  if 'mean' not in rp:
+    rp['mean'] = df_cr.mean()
+  if 'std' not in rp:
+    rp['std'] = df_cr.std()
+  df_res = (df - rp['mean']) / rp['std']
+  return df_res if length is None else df_res.fillna(0), rp
 
 
 def fisher_transform(df):
@@ -85,19 +97,25 @@ def fisher_transform(df):
   return [0 if v==1 else np.log((1.0+v)/(1-v)) * .5 for v in df]
 
 
-def rolling_mean(df, length=20):
+def rolling_mean(df, length=20, rp={}):
   df_cr = df.rolling(length) if length is not None else df
-  return df_cr.mean()
+  if 'mean' not in rp:
+    rp['mean'] = df_cr.mean()
+  return rp['mean'], rp
 
 
-def subtract_mean(df, length=20):
+def subtract_mean(df, length=20, rp={}):
   df_cr = df.rolling(length) if length is not None else df
-  return df-df_cr.mean()
+  if 'mean' not in rp:
+    rp['mean'] = df_cr.mean()
+  return df-rp['mean'], rp
 
 
-def subtract_median(df, length=20):
+def subtract_median(df, length=20, rp={}):
   df_cr = df.rolling(length) if length is not None else df
-  return df-df_cr.median()
+  if 'median' not in rp:
+    rp['median'] = df_cr.median()
+  return df-rp['median'], rp
 
 
 def first_diff(df, length=1):

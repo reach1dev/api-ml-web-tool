@@ -52,7 +52,7 @@ def get_transform_data(file_id):
             if transform['id'] == 1000:
                 output_data = df.copy()
             else:
-                output_data = transform_data(output_data, transform, last_transform['id'])
+                output_data, _ = transform_data(output_data, transform, last_transform['id'], {})
         
         columns = []
         if output_data is not None:

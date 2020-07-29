@@ -3,7 +3,7 @@ from transformations import do_transforms
 from sklearn.model_selection import KFold
 
 
-def transform_data(X, transforms):
+def transform_data(X, transforms, trained_params):
   for transform in transforms:
     for tr in transforms:
       if tr['id'] != transform['id'] and 'parentId' in transform and tr['id'] == transform['parentId']:
@@ -12,7 +12,7 @@ def transform_data(X, transforms):
         else:
             tr['children'].append(transform)
   
-  return do_transforms(transforms[0], X)
+  return do_transforms(transforms[0], X, trained_params)
 
 
 def filter_target(X, type, input_filters, input_parameters, train_label):
@@ -61,7 +61,7 @@ def triple_barrier(df, up=10, dn=10, maxhold=10, close='Close', high='High', ope
   return final_value
 
 
-def train_test_split(X, Y, type, k_fold, random_select, n_test_shift, n_train_size):
+def train_test_split(X, type, k_fold, random_select, n_test_shift, n_train_size):
   if k_fold:
     kf = KFold(n_splits= k_fold)
     kf.get_n_splits(X)
@@ -74,44 +74,31 @@ def train_test_split(X, Y, type, k_fold, random_select, n_test_shift, n_train_si
       X_train = X.loc[X_train_index, :]
       X_test = X.loc[X_test_index, :]
 
-      if type == 0 or type == 5:
-        res.append([X_train, X_test])
-        continue
-      
-      Y_train = Y.loc[X_train_index+n_test_shift, :]
-      Y_test = Y.loc[X_test_index+n_test_shift, :]
-
-      res.append([X_train, X_test, Y_train, Y_test])
+      res.append([X_train, X_test])
     return res
   
   if random_select:
     X_train = X.sample(n=n_train_size, random_state=1)
     X_train = X_train.sort_index(axis=0)
     X_train_index = X_train.index - n_test_shift
-    X_train_index = X_train_index[X_train_index > 0]
+    X_train_index = X_train_index[X_train_index >= 0]
     X_train = X.loc[X_train_index, :]
 
     X_test_index = X.index.difference(X_train.index) - n_test_shift
-    X_test_index = X_test_index[X_test_index > 0]
+    X_test_index = X_test_index[X_test_index >= 0]
     X_test = X.loc[X_test_index, :]
   else:
     X_train = X[X.index <= n_train_size]
     X_train_index = X_train.index - n_test_shift
-    X_train_index = X_train_index[X_train_index > 0]
+    X_train_index = X_train_index[X_train_index >= 0]
     X_train = X.loc[X_train_index, :]
 
     X_test = X[X.index > n_train_size]
     X_test_index = X_test.index - n_test_shift
-    X_test_index = X_test_index[X_test_index > 0]
+    X_test_index = X_test_index[X_test_index > n_train_size]
     X_test = X.loc[X_test_index, :]
 
-  if type == 0 or type == 5:
-    return [[X_train, X_test]]
-  
-  Y_train = Y.loc[X_train_index+n_test_shift, :]
-  Y_test = Y.loc[X_test_index+n_test_shift, :]
-
-  return [[X_train, X_test, Y_train, Y_test]]
+  return [[X_train, X_test]]
 
 
 def prepare_train_test(X, transforms, parameters):
@@ -131,7 +118,7 @@ def prepare_train_test(X, transforms, parameters):
   if 'Time' in X:
     del X0['Time']
 
-  X1 = transform_data(X0, transforms)
+  # X1 = X0 # transform_data(X0, transforms)
 
   if type == 0 or type == 5:
     train_label = ''
@@ -149,17 +136,10 @@ def prepare_train_test(X, transforms, parameters):
     input_parameters = parameters['features']
   else:
     return []
-  X2 = filter_target(X1, type, input_filters, input_parameters, train_label)
-
+  
   if 'disableSplit' in parameters and parameters['disableSplit']:
+    X2 = transform_data(X0, transforms, {})
     return [[X2, None]]
-
-  Y = pd.DataFrame(index=X1.index)
-  if train_label == 'triple_barrier':
-    triple_option = parameters['tripleOptions']
-    Y[train_label] = triple_barrier(X1, triple_option['up'], triple_option['down'], triple_option['maxHold'])
-  elif train_label != '':
-    Y[train_label] = X2[train_label]
   
   k_fold = None
   if 'kFold' in parameters and parameters['kFold'] != 0:
@@ -170,22 +150,52 @@ def prepare_train_test(X, transforms, parameters):
   n_test_shift = 0
   if 'testShift' in parameters:
     n_test_shift = parameters['testShift']
+    if train_label == 'triple_barrier':
+      n_test_shift = 0
   
   resampling = None
   if 'resampling' in parameters:
     resampling = parameters['resampling']
   
   # X3, Y1 = resample(X2, Y, resampling)
-  result = train_test_split(X2, Y, type, k_fold, random_select, n_test_shift, n_train_size)
+  result = train_test_split(X0, type, k_fold, random_select, n_test_shift, n_train_size)
   result_new = []
-  for res in result:
-    if len(res) == 2:
-      result_new.append(res)
+  triple_option = parameters['tripleOptions']
+
+  if type != 0 and type != 5:
+    Y = pd.DataFrame(index=X0.index)
+    if train_label == 'triple_barrier':
+      Y[train_label] = triple_barrier(X, triple_option['up'], triple_option['down'], triple_option['maxHold'])
     else:
-      X_train, X_test, Y_train, Y_test = res
-      X_train, Y_train = resample(X_train, Y_train, resampling)
-      result_new.append([X_train, X_test, Y_train, Y_test])
+      X2, _ = transform_data(X0, transforms, {})
+      Y[train_label] = X2[train_label]
+
+  for res in result:
+    X_train, X_test = res
+    
+    X_train, trained_params = transform_data(X_train, transforms, {})
+    X_test, _ = transform_data(X_test, transforms, trained_params)
+    
+    if type == 0 or type == 5:
+      if type != 0:
+        X_train = filter_target(X_train, type, input_filters, input_parameters, train_label)
+        X_test = filter_target(X_test, type, input_filters, input_parameters, train_label)
+      result_new.append([X_train, X_test])
+      continue
+
+    if train_label != 'triple_barrier':
+      Y.loc[X_train.index, train_label] = X_train.loc[X_train.index, train_label]
+      Y.loc[X_test.index, train_label] = X_test.loc[X_test.index, train_label]
+    Y_train = Y.loc[X_train.index+n_test_shift, :]
+    Y_test = Y.loc[X_test.index+n_test_shift, :]
+
+    X_train = filter_target(X_train, type, input_filters, input_parameters, train_label)
+    X_test = filter_target(X_test, type, input_filters, input_parameters, train_label)
+
+    X_train, Y_train = resample(X_train, Y_train, resampling)
+    result_new.append([X_train, X_test, Y_train, Y_test])
   return result_new
+
 
 
 def resample(X, Y, resampling):
