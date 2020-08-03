@@ -39,16 +39,18 @@ def transform_data(df, transform, parentId, trained_params):
     do_fill_na = True
     if col in outputs:
       col_id = outputs[col]
+      if col_id not in trained_params[tid]:
+        trained_params[tid][col_id] = {}
       if tool == 101:
-        df[col_id], trained_params[tid] = normalize_dataframe(df[col], rolling, params['min'], params['max'], trained_params[tid])
+        df[col_id], trained_params[tid][col_id] = normalize_dataframe(df[col], rolling, params['min'], params['max'],  trained_params[tid][col_id])
       elif tool == 102:
-        df[col_id], trained_params[tid] = standard_dataframe(df[col], rolling, trained_params[tid])
+        df[col_id], trained_params[tid][col_id] = standard_dataframe(df[col], rolling, trained_params[tid][col_id])
       elif tool == 103:
         df[col_id] = fisher_transform(df[col])
       elif tool == 104:
-        df[col_id], trained_params[tid] = subtract_median(df[col], rolling, trained_params[tid])
+        df[col_id], trained_params[tid][col_id] = subtract_median(df[col], rolling, trained_params[tid][col_id])
       elif tool == 105:
-        df[col_id], trained_params[tid] = subtract_mean(df[col], rolling, trained_params[tid])
+        df[col_id], trained_params[tid][col_id] = subtract_mean(df[col], rolling, trained_params[tid][col_id])
       elif tool == 106:
         df[col_id] = first_diff(df[col], params['shift'])
       elif tool == 107:
@@ -67,7 +69,7 @@ def transform_data(df, transform, parentId, trained_params):
       elif tool == 113:
         df[col_id] = power_function(df[col], params['power'])
       elif tool == 115:
-        df[col_id], trained_params[tid] = rolling_mean(df[col], rolling, trained_params[tid])
+        df[col_id], trained_params[tid][col_id] = rolling_mean(df[col], rolling, trained_params[tid][col_id])
   if do_fill_na:
     return df.fillna(0), trained_params
   return df, trained_params

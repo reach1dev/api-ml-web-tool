@@ -210,5 +210,6 @@ def resample(X, Y, resampling):
     X_resampled, y_resampled = cc.fit_resample(X, Y)
   if resampling == 'smote':
     from imblearn.over_sampling import BorderlineSMOTE
+    # from imblearn.over_sampling import SMOTE
     X_resampled, y_resampled = BorderlineSMOTE().fit_resample(X, Y)
   return X_resampled.fillna(0), y_resampled.fillna(0)

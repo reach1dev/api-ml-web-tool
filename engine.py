@@ -10,6 +10,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble  import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.svm import SVR
 from sklearn.decomposition import PCA
@@ -86,7 +88,7 @@ def pca_analyse(input_file, transforms, parameters):
 
 
 def get_metrics(y_true, y_pred, is_regression, train_shift, algorithmType):
-  y_true = y_true[y_true.index>=train_shift]
+  # y_true = y_true[y_true.index>=train_shift]
   cm = []
   if algorithmType != 2 and not is_regression:
     cm = confusion_matrix(y_true, y_pred)
@@ -140,6 +142,14 @@ def grid_optimize(input_file, transforms, parameters, algorithmType):
         classifier = SVC(random_state=parameters['random_state'][0])
       main_param = 'C'
       params = ['C', 'gamma', 'kernel', 'degree']
+    elif algorithmType == 7:
+      main_param = 'max_depth'
+      params = ['max_depth', 'random_state']
+      classifier = DecisionTreeClassifier()
+    elif algorithmType == 8:
+      main_param = 'max_depth'
+      params = ['max_depth', 'random_state']
+      classifier = RandomForestClassifier()
     else:
       continue
 
@@ -194,6 +204,10 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
       classifier = model #make_pipeline(StandardScaler(), model)
     elif algorithmType == 6:
       classifier = LinearDiscriminantAnalysis()
+    elif algorithmType == 7:
+      classifier = DecisionTreeClassifier(max_depth=parameters.get('max_depth', 2), random_state=parameters.get('random_state', 0))
+    elif algorithmType == 8:
+      classifier = RandomForestClassifier(max_depth=parameters.get('max_depth', 2), random_state=parameters.get('random_state', 0))
       
     df_train_target = df_train_labels[label]
     df_test_target = df_test_labels[label]
@@ -222,9 +236,9 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     df_train_score, _ = get_metrics(df_train_target, df_train_result, is_regression, test_shift, algorithmType)
     N = 1 # int(rc / 500.0)
     
-    date_index = input_file.loc[df_test.index, 'Date']
+    date_index = input_file.loc[df_test.index+test_shift, input_file.columns[0]]
     date_index = date_index.fillna(date_index.max())
-    res = [np.array(date_index)]
+    res = [np.array(date_index) ]
     
     df_test_target = df_test_target.to_numpy()[[x for x in range(df_test_target.shape[0]) if x%N == 0]]
     df_test_result = df_test_result[[x for x in range(df_test_result.shape[0]) if x%N == 0]]
@@ -469,7 +483,7 @@ def get_decision_boundaries(classifier, X_set, y_set, num_points_to_plot):
 
   contours = measure.find_contours(r1, 0)
 
-  X_set, y_set = resample(X_set, y_set, n_samples=num_points_to_plot, stratify=y_set, replace=False)
+  X_set, y_set = resample(X_set, y_set, n_samples=num_points_to_plot, stratify=y_set, replace=True)
   # contours = []
   # for i, j in enumerate(np.unique(y_set)):
   #   contours.append([X1[r1 == j], X2[r1 == j]])
