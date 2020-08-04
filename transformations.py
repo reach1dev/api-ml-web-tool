@@ -29,7 +29,7 @@ def transform_data(df, transform, parentId, trained_params):
 
   if tool == 114:
     df[params['name']] = df.eval(params['expression'])
-    return df.replace([np.inf, -np.inf], np.nan).fillna(0)
+    return df.replace([np.inf, -np.inf], np.nan).fillna(0), trained_params
   
   rolling = params['rolling'] if 'rolling' in params else None
   tid = transform['id']
