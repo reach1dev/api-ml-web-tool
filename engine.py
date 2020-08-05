@@ -11,7 +11,9 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble  import RandomForestClassifier
+from sklearn.ensemble  import RandomForestRegressor
 from sklearn.svm import SVC
 from sklearn.svm import SVR
 from sklearn.decomposition import PCA
@@ -205,13 +207,19 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     elif algorithmType == 6:
       classifier = LinearDiscriminantAnalysis()
     elif algorithmType == 7:
-      classifier = DecisionTreeClassifier(max_depth=parameters.get('max_depth', 2), random_state=parameters.get('random_state', 0))
+      if not parameters.get('regression', False):
+        classifier = DecisionTreeClassifier(max_depth=parameters.get('max_depth', 2), random_state=parameters.get('random_state', 0))
+      else:
+        classifier = DecisionTreeRegressor(max_depth=parameters.get('max_depth', 2), random_state=parameters.get('random_state', 0))
     elif algorithmType == 8:
-      classifier = RandomForestClassifier(max_depth=parameters.get('max_depth', 2), random_state=parameters.get('random_state', 0))
+      if not parameters.get('regression', False):
+        classifier = RandomForestClassifier(max_depth=parameters.get('max_depth', 2), random_state=parameters.get('random_state', 0))
+      else:
+        classifier = RandomForestRegressor(max_depth=parameters.get('max_depth', 2), random_state=parameters.get('random_state', 0))
       
     df_train_target = df_train_labels[label]
     df_test_target = df_test_labels[label]
-    is_regression = algorithmType == 2 or (algorithmType==4 and parameters.get('useSVR', False))
+    is_regression = algorithmType == 2 or (algorithmType==4 and parameters.get('useSVR', False)) or (parameters.get('regression', False))
 
     if label != 'triple_barrier' and not is_regression:
       df_train_target = df_train_target.astype('int').astype('category')
