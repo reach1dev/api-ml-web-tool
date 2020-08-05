@@ -10,7 +10,7 @@ def do_transforms(transform, df, trained_params):
   for child in transform['children']:
     X = df.copy()
     X1, trained_params = transform_data(X, child, transform['id'], trained_params)
-    X2, trained_params =  do_transforms(child, X1, trained_params)
+    X2, trained_params = do_transforms(child, X1, trained_params)
     if X2 is not None:
       common_cols = list(set.intersection(*(set(x.columns) for x in [Y, X2])))
       new_cols = []
@@ -18,7 +18,7 @@ def do_transforms(transform, df, trained_params):
         if c not in common_cols:
           new_cols.append(c)
       Y = pd.concat([Y, X2[new_cols]], join='inner', axis=1)
-  return Y, trained_params
+  return Y.dropna(), trained_params
 
 
 def transform_data(df, transform, parentId, trained_params):
@@ -71,7 +71,7 @@ def transform_data(df, transform, parentId, trained_params):
       elif tool == 115:
         df[col_id], trained_params[tid][col_id] = rolling_mean(df[col], rolling, trained_params[tid][col_id])
   if do_fill_na:
-    return df.fillna(0), trained_params
+    return df.dropna(), trained_params
   return df, trained_params
 
 
@@ -110,8 +110,7 @@ def rolling_mean(df, length=20, rp={}):
   if length is None:
     if 'mean' not in rp:
       rp['mean'] = df.mean()
-  df_cr_mean = df_cr.mean() if length is not None else rp['mean']
-  return df_cr_mean, rp
+  return df_cr.mean() if length is not None else rp['mean'], rp
 
 
 def subtract_mean(df, length=20, rp={}):
