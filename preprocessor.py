@@ -177,9 +177,8 @@ def prepare_train_test(X, transforms, parameters):
     X_test, _ = transform_data(X_test, transforms, trained_params)
     
     if type == 0 or type == 5:
-      if type != 0:
-        X_train = filter_target(X_train, type, input_filters, input_parameters, train_label)
-        X_test = filter_target(X_test, type, input_filters, input_parameters, train_label)
+      X_train = filter_target(X_train, type, input_filters, input_parameters, train_label)
+      X_test = filter_target(X_test, type, input_filters, input_parameters, train_label)
       result_new.append([X_train, X_test])
       continue
 

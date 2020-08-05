@@ -77,20 +77,26 @@ def transform_data(df, transform, parentId, trained_params):
 
 def normalize_dataframe(df, length=20, min=0, max=1, rp={}):
   df_cr = df.rolling(length) if length is not None else df
-  if 'min' not in rp:
-    rp['min'] = df_cr.min()
-  if 'max' not in rp:
-    rp['max'] = df_cr.max()
-  return (((df - rp['min']) / (rp['max'] - rp['min'])) * (max-min) + min).fillna(0), rp
+  if length is None:
+    if 'min' not in rp:
+      rp['min'] = df.min()
+    if 'max' not in rp:
+      rp['max'] = df.max()
+  df_cr_min = df_cr.min() if length is not None else rp['min']
+  df_cr_max = df_cr.max() if length is not None else rp['max']
+  return (((df - df_cr_min) / (df_cr_max - df_cr_min)) * (max-min) + min).fillna(0), rp
 
 
 def standard_dataframe(df, length=20, rp={}):
   df_cr = df.rolling(length) if length is not None else df
-  if 'mean' not in rp:
-    rp['mean'] = df_cr.mean()
-  if 'std' not in rp:
-    rp['std'] = df_cr.std()
-  df_res = (df - rp['mean']) / rp['std']
+  if length is None:
+    if 'mean' not in rp:
+      rp['mean'] = df.mean()
+    if 'std' not in rp:
+      rp['std'] = df.std()
+  df_cr_mean = df_cr.mean() if length is not None else rp['mean']
+  df_cr_std = df_cr.std() if length is not None else rp['std']
+  df_res = (df - df_cr_mean) / df_cr_std
   return df_res if length is None else df_res.fillna(0), rp
 
 
@@ -101,23 +107,29 @@ def fisher_transform(df):
 
 def rolling_mean(df, length=20, rp={}):
   df_cr = df.rolling(length) if length is not None else df
-  if 'mean' not in rp:
-    rp['mean'] = df_cr.mean()
-  return rp['mean'], rp
+  if length is None:
+    if 'mean' not in rp:
+      rp['mean'] = df.mean()
+  df_cr_mean = df_cr.mean() if length is not None else rp['mean']
+  return df_cr_mean, rp
 
 
 def subtract_mean(df, length=20, rp={}):
   df_cr = df.rolling(length) if length is not None else df
-  if 'mean' not in rp:
-    rp['mean'] = df_cr.mean()
-  return df-rp['mean'], rp
+  if length is None:
+    if 'mean' not in rp:
+      rp['mean'] = df.mean()
+  df_cr_mean = df_cr.mean() if length is not None else rp['mean']
+  return df-df_cr_mean, rp
 
 
 def subtract_median(df, length=20, rp={}):
   df_cr = df.rolling(length) if length is not None else df
-  if 'median' not in rp:
-    rp['median'] = df_cr.median()
-  return df-rp['median'], rp
+  if length is None:
+    if 'median' not in rp:
+      rp['median'] = df.median()
+  df_cr_median = df_cr.median() if length is not None else rp['median']
+  return df-df_cr_median, rp
 
 
 def first_diff(df, length=1):
