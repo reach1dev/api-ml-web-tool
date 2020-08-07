@@ -145,7 +145,7 @@ def prepare_train_test(X, transforms, parameters):
   if 'kFold' in parameters and parameters['kFold'] != 0:
     k_fold =int(parameters['kFold'])
   random_select = False
-  if 'random_select' in parameters:
+  if 'randomSelect' in parameters:
     random_select = parameters['randomSelect']
   n_test_shift = 0
   if 'testShift' in parameters:

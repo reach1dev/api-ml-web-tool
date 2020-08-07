@@ -213,9 +213,9 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
         classifier = DecisionTreeRegressor(max_depth=parameters.get('max_depth', 2), random_state=parameters.get('random_state', 0))
     elif algorithmType == 8:
       if not parameters.get('regression', False):
-        classifier = RandomForestClassifier(max_depth=parameters.get('max_depth', 2), random_state=parameters.get('random_state', 0))
+        classifier = RandomForestClassifier(max_depth=parameters.get('max_depth', 2), random_state=parameters.get('random_state', 0), n_estimators=parameters.get('n_estimators', 100))
       else:
-        classifier = RandomForestRegressor(max_depth=parameters.get('max_depth', 2), random_state=parameters.get('random_state', 0))
+        classifier = RandomForestRegressor(max_depth=parameters.get('max_depth', 2), random_state=parameters.get('random_state', 0), n_estimators=parameters.get('n_estimators', 100))
       
     df_train_target = df_train_labels[label]
     df_test_target = df_test_labels[label]
@@ -252,6 +252,8 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     df_test_result = df_test_result[[x for x in range(df_test_result.shape[0]) if x%N == 0]]
     res.append(df_test_target)
     res.append(df_test_result)
+    # res.append(df_train_target.values)
+    # res.append(df_train_result)
     
     contours, features = [[], []]
     if not is_regression and df_test.shape[1] == 2: #  or (label != 'triple_barrier' and df_test.shape[1] == 3)
