@@ -89,8 +89,7 @@ def pca_analyse(input_file, transforms, parameters):
   return res_data_set
 
 
-def get_metrics(y_true, y_pred, is_regression, train_shift, algorithmType):
-  # y_true = y_true[y_true.index>=train_shift]
+def get_metrics(y_true, y_pred, is_regression, algorithmType):
   cm = []
   if algorithmType != 2 and not is_regression:
     cm = confusion_matrix(y_true, y_pred)
@@ -189,11 +188,12 @@ def lda_analyse(input_file, transforms, parameters):
 def knn_classifier(input_file, transforms, parameters, algorithmType):
   train_data_set = prepare_train_test(input_file, transforms, parameters)
   res_data_set = []
-  for df_train, df_test, df_train_labels, df_test_labels in train_data_set:
+  
+  for X_train, X_test, y_train, y_test, trained_params in train_data_set:
     label = parameters['trainLabel']
     
     if algorithmType == 1:
-      classifier = KNeighborsClassifier(n_neighbors=parameters['n_neighbors'])
+      classifier = KNeighborsClassifier(n_neighbors=parameters['n_neighbors'], p=parameters['P'], metric=parameters['metric'])
     elif algorithmType == 2:
       classifier = LinearRegression()
     elif algorithmType == 3:
@@ -217,51 +217,53 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
       else:
         classifier = RandomForestRegressor(max_depth=parameters.get('max_depth', 2), random_state=parameters.get('random_state', 0), n_estimators=parameters.get('n_estimators', 100))
       
-    df_train_target = df_train_labels[label]
-    df_test_target = df_test_labels[label]
+    y_train = y_train[label]
+    y_test = y_test[label]
     is_regression = algorithmType == 2 or (algorithmType==4 and parameters.get('useSVR', False)) or (parameters.get('regression', False))
 
     if label != 'triple_barrier' and not is_regression:
-      df_train_target = df_train_target.astype('int').astype('category')
-      df_test_target = df_test_target.astype('int').astype('category')
+      y_test = y_test.astype('int').astype('category')
+      y_test = y_test.astype('int').astype('category')
     
     for idx, col in enumerate(parameters['features']):
       if col == label and parameters['inputFilters'][idx] == False:
-        del df_train[label]
-        del df_test[label]
+        del X_train[label]
+        del X_test[label]
         break
     
-    classifier.fit(df_train, df_train_target)
+    classifier.fit(X_train, y_train)
 
     # if algorithmType == 3 or algorithmType == 4:
     #   df_train = df_train.astype('int').astype('category')
     #   df_test = df_test.astype('int').astype('category')
-    df_train_result = classifier.predict(df_train)
-    df_test_result = classifier.predict(df_test)
+    p_train = classifier.predict(X_train)
+    p_test = classifier.predict(X_test)
     
     test_shift = parameters['testShift'] if parameters['trainLabel'] != 'triple_barrier' else 0
-    df_test_score, df_test_cm = get_metrics(df_test_target, df_test_result, is_regression, test_shift, algorithmType)
-    df_train_score, _ = get_metrics(df_train_target, df_train_result, is_regression, test_shift, algorithmType)
+    df_test_score, df_test_cm = get_metrics(y_test, p_test, is_regression, algorithmType)
+    df_train_score, _ = get_metrics(y_train, p_train, is_regression, algorithmType)
     N = 1 # int(rc / 500.0)
     
-    date_index = input_file.loc[df_test.index+test_shift, input_file.columns[0]]
-    date_index = date_index.fillna(date_index.max())
+    date_index = input_file.loc[y_test.index+test_shift, input_file.columns[0]]
+    date_index = date_index.dropna()
     res = [np.array(date_index) ]
     
-    df_test_target = df_test_target.to_numpy()[[x for x in range(df_test_target.shape[0]) if x%N == 0]]
-    df_test_result = df_test_result[[x for x in range(df_test_result.shape[0]) if x%N == 0]]
-    res.append(df_test_target)
-    res.append(df_test_result)
-    # res.append(df_train_target.values)
-    # res.append(df_train_result)
+    y_test = y_test.to_numpy()[[x for x in range(y_test.shape[0]) if x%N == 0]]
+    p_test = p_test[[x for x in range(p_test.shape[0]) if x%N == 0]]
+    res.append(y_test)
+    res.append(p_test)
     
     contours, features = [[], []]
-    if not is_regression and df_test.shape[1] == 2: #  or (label != 'triple_barrier' and df_test.shape[1] == 3)
-      contours, features = get_decision_boundaries(classifier, df_test.values, df_test_target, 100)
-    if is_regression and df_test.shape[1] == 1:
-      features = np.array([[df_train[df_train.columns[0]].values, df_train_target.values], [df_test[df_test.columns[0]].values, df_test_target]])
-      contours = np.array([[df_train[df_train.columns[0]].values, df_train_result], [df_test[df_test.columns[0]].values, df_test_result]])
-      # contours, features = get_decision_boundaries(classifier, df_train.values, df_train_target, 100)
+    if not is_regression and X_test.shape[1] == 2:
+      X_train = pd.DataFrame(index=X_train.index)
+      for col in input_file:
+        if col == 'No' or X_train.shape[1] >= 2:
+          continue
+        X_train[col] = input_file.loc[X_train.index, col]
+      contours, features = get_decision_boundaries(classifier, X_train, y_train, 200, transforms, trained_params, algorithmType, parameters)
+    if is_regression and X_test.shape[1] == 1:
+      features = np.array([[X_train[X_train.columns[0]].values, y_train.values], [X_test[X_test.columns[0]].values, y_test]])
+      contours = np.array([[X_train[X_train.columns[0]].values, p_train], [X_test[X_test.columns[0]].values, p_test]])
 
     res = np.array(res)
     res_data = [res, np.array([df_train_score, df_test_score]).T, df_test_cm, contours, features]
@@ -300,121 +302,6 @@ def triple_barrier(df, up=10, dn=10, maxhold=10, close='Close', high='High', ope
         if len_after == len_before:
             final_value.append(0)
     return final_value
-
-# def prepare_train_test(input_file, transforms, train_count, train_shift, random_select, algorithmType, parameters):
-#   df = input_file.copy()
-#   if 'Date' in input_file:
-#     del df['Date']
-#   if 'Time' in input_file:
-#     del df['Time']
-
-#   for transform in transforms:
-#     for tr in transforms:
-#       if tr['id'] != transform['id'] and 'parentId' in transform and tr['id'] == transform['parentId']:
-#         if 'children' not in tr:
-#             tr['children'] = [transform]
-#         else:
-#             tr['children'].append(transform)
-  
-#   df = do_transforms(transforms[0], df)
-
-#   input_filters = parameters['inputFilters']
-#   input_parameters = parameters['features']
-#   df1 = pd.DataFrame(index=df.index)
-#   idx = 0
-#   for col in input_parameters:
-#     if algorithmType != 0 and col == parameters['trainLabel']:
-#       df1[col] = df[col]
-#       idx = idx +1
-#       continue
-#     if input_filters[idx]:
-#       df1[col] = df[col]
-#     idx = idx +1
-  
-#   df_train = None
-#   df_test = None
-#   df_train_index = None
-#   df_test_index = None
-
-#   train_label = parameters['trainLabel']
-
-#   if 'disableSplit' in parameters and parameters['disableSplit']:
-#     return [[df1, None]]
-
-#   if 'kFold' in parameters and parameters['kFold'] != 0:
-#     kf = KFold(n_splits= int(parameters['kFold']))
-#     kf.get_n_splits(df1)
-#     res = []
-#     for train_index, test_index in kf.split(df1):
-#       df_train_index = train_index[train_index<df1.shape[0]-train_shift]
-#       df_train_index.sort()
-#       df_test_index = test_index[test_index<df1.shape[0]-train_shift]
-#       df_test_index.sort()
-#       df_train = df1.loc[df_train_index, :]
-#       df_test = df1.loc[df_test_index, :]
-      
-#       df_train_labels = df1.loc[df_train_index+train_shift, :]
-#       df_test_labels = df1.loc[df_test_index+train_shift, :]
-
-#       if algorithmType == 0 or algorithmType == 5:
-#         res.append([df_train, df_test])
-#         continue
-      
-#       if train_label == '':
-#         return [[df_train, df_test, df_train_labels, df_test_labels]]
-#       df2 = pd.DataFrame(index=df.index)
-#       if train_label == 'triple_barrier':
-#         triple_option = parameters['tripleOptions']
-#         df2[train_label] = triple_barrier(df, triple_option['up'], triple_option['down'], triple_option['maxHold'])
-#         df2[train_label] = df2[train_label].astype('category', copy=False)
-#       else:
-#         df2[train_label] = df[train_label]
-      
-#       df_train_labels = df2.loc[df_train_index+train_shift, :]
-#       df_test_labels = df2.loc[df_test_index+train_shift, :]
-
-#       res.append([df_train, df_test, df_train_labels, df_test_labels])
-#     return res
-#   elif random_select:
-#     df_train = df1.sample(n=train_count, random_state=1)
-#     df_train = df_train.sort_index(axis=0)
-#     df_train_index = df_train.index - train_shift
-#     df_train_index = df_train_index[df_train_index > 0]
-#     df_train = df1.loc[df_train_index, :]
-
-#     df_test_index = df1.index.difference(df_train.index) - train_shift
-#     df_test_index = df_test_index[df_test_index > 0]
-#     df_test = df1.loc[df_test_index, :]
-#   else:
-#     df_train = df1[df.index <= train_count]
-#     df_train_index = df_train.index - train_shift
-#     df_train_index = df_train_index[df_train_index > 0]
-#     df_train = df1.loc[df_train_index, :]
-
-#     df_test = df1[df.index > train_count]
-#     df_test_index = df_test.index - train_shift
-#     df_test_index = df_test_index[df_test_index > 0]
-#     df_test = df1.loc[df_test_index, :]
-  
-#   df_train_labels = df1.loc[df_train_index+train_shift, :]
-#   df_test_labels = df1.loc[df_test_index+train_shift, :]
-
-#   if algorithmType == 0 or algorithmType == 5:
-#     return [[df_train, df_test]]
-
-#   if train_label == '':
-#     return [[df_train, df_test, df_train_labels, df_test_labels]]
-#   df2 = pd.DataFrame(index=df.index)
-#   if train_label == 'triple_barrier':
-#     triple_option = parameters['tripleOptions']
-#     df2[train_label] = triple_barrier(df, triple_option['up'], triple_option['down'], triple_option['maxHold'])
-#   else:
-#     df2[train_label] = df[train_label]
-  
-#   df_train_labels = df2.loc[df_train_index+train_shift, :]
-#   df_test_labels = df2.loc[df_test_index+train_shift, :]
-
-#   return [[df_train, df_test, df_train_labels, df_test_labels]]
 
 
 def kmean_clustering(input_file, transforms, parameters, optimize):
@@ -488,24 +375,42 @@ def kmean_clustering(input_file, transforms, parameters, optimize):
   return res_data_set
 
 
-def get_decision_boundaries(classifier, X_set, y_set, num_points_to_plot):
+def get_decision_boundaries(classifier, df_train, y_set, num_points_to_plot, transforms, trained_params, type, extra = {}):
+  X_set = df_train.values
+  dx1 = (X_set[:, 0].max() - X_set[:, 0].min()) * 0.05
+  dx2 = (X_set[:, 1].max() - X_set[:, 1].min()) * 0.05
   X1, X2 = np.meshgrid(
-    np.linspace(start=X_set[:, 0].min(), stop=X_set[:, 0].max(), num=num_points_to_plot),
-    np.linspace(start=X_set[:, 1].min(), stop=X_set[:, 1].max(), num=num_points_to_plot))
-  r = classifier.predict(np.array([X1.ravel(), X2.ravel()]).T)
+    np.linspace(start=X_set[:, 0].min() - dx1, stop=X_set[:, 0].max() + dx1, num=num_points_to_plot),
+    np.linspace(start=X_set[:, 1].min() - dx2, stop=X_set[:, 1].max() + dx2, num=num_points_to_plot))
+  
+  X_train = pd.DataFrame()
+  X_train[df_train.columns[0]] = X1.ravel()
+  X_train[df_train.columns[1]] = X2.ravel()
+
+  from preprocessor import transform_data
+  from preprocessor import filter_target
+  X_train, _ = transform_data(X_train, transforms, trained_params)
+  X_train = filter_target(X_train, type, extra['inputFilters'], extra['features'], '')
+
+  r = classifier.predict(X_train)
   r1 = r.reshape(X1.shape)
 
   contours = measure.find_contours(r1, 0)
+  f_contours = []
+  for contour in contours:
+    xa1 = []
+    xa2 = []
+    for pt in contour:
+      xa1.append(X1[int(pt[0])][int(pt[1])])
+      xa2.append(X2[int(pt[0])][int(pt[1])])
+    f_contours.append([xa1, xa2])
 
-  X_set, y_set = resample(X_set, y_set, n_samples=num_points_to_plot, stratify=y_set, replace=True)
-  # contours = []
-  # for i, j in enumerate(np.unique(y_set)):
-  #   contours.append([X1[r1 == j], X2[r1 == j]])
+  # X_set, y_set = resample(X_set, y_set, n_samples=num_points_to_plot, stratify=y_set, replace=True)
   
   features = []
   for i, j in enumerate(np.unique(y_set)):
     features.append([X_set[y_set == j, 0], X_set[y_set == j, 1]])
-  return contours, features
+  return f_contours, features
 
 
 def upload_input_file(file):

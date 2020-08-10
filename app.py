@@ -86,6 +86,8 @@ def inter_train(file_id, optimize = False):
     def run_job(res_file_id):
         try:
             res_data_set = engine.train_and_test(input_file, transforms, parameters, optimize=optimize)
+            # from trainer import train_and_test
+            # res_data_set = train_and_test(input_file, transforms, parameters)
             with open('tmp/' + res_file_id + '.dat', 'wb') as f:
                 header = np.array([len(res_data_set)])
                 np.save(f, np.array(header))
@@ -154,8 +156,9 @@ def upload_input_data(has_index):
             df = pd.read_csv (file, index_col=0)
         else:
             df = pd.read_csv (file, index_col=False)
-            df.insert(loc=0, column='No', value=np.arange(len(df)))
-            df.index = df[df.columns[0]]
+            df1 = pd.DataFrame()
+            df1['No'] = np.arange(len(df))
+            df.index = df1['No']
         df.to_csv(file_name(file_id))
         path, dirs, files = next(os.walk("tmp"))
         files = [ fi for fi in files if not fi.endswith(".csv") ]

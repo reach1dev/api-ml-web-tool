@@ -28,7 +28,10 @@ def transform_data(df, transform, parentId, trained_params):
   params = transform['parameters']
 
   if tool == 114:
-    df[params['name']] = df.eval(params['expression'])
+    try:
+      df[params['name']] = df.eval(params['expression'])
+    except:
+      return df, trained_params
     return df.replace([np.inf, -np.inf], np.nan).fillna(0), trained_params
   
   rolling = params['rolling'] if 'rolling' in params else None
@@ -37,7 +40,7 @@ def transform_data(df, transform, parentId, trained_params):
     trained_params[tid] = {}
   for col in inputs:    
     do_fill_na = True
-    if col in outputs:
+    if col in outputs and col in df:
       col_id = outputs[col]
       if col_id not in trained_params[tid]:
         trained_params[tid][col_id] = {}

@@ -192,7 +192,7 @@ def prepare_train_test(X, transforms, parameters):
     X_test = filter_target(X_test, type, input_filters, input_parameters, train_label)
 
     X_train, Y_train = resample(X_train, Y_train, resampling)
-    result_new.append([X_train, X_test, Y_train, Y_test])
+    result_new.append([X_train, X_test, Y_train, Y_test, trained_params])
   return result_new
 
 
