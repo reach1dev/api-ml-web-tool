@@ -260,7 +260,16 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
         if col == 'No' or X_train.shape[1] >= 2:
           continue
         X_train[col] = input_file.loc[X_train.index, col]
-      contours, features = get_decision_boundaries(classifier, X_train, y_train, 200, transforms, trained_params, algorithmType, parameters)
+      
+      X_test = pd.DataFrame(index=X_test.index)
+      for col in input_file:
+        if col == 'No' or X_test.shape[1] >= 2:
+          continue
+        X_test[col] = input_file.loc[X_test.index, col]
+      contours_train, features_train = get_decision_boundaries(classifier, X_train, y_train, 200, transforms, trained_params, algorithmType, parameters)
+      features_test = get_features(X_test, y_test)
+      features = np.array([features_train, features_test])
+      contours = contours_train
     if is_regression and X_test.shape[1] == 1:
       features = np.array([[X_train[X_train.columns[0]].values, y_train.values], [X_test[X_test.columns[0]].values, y_test]])
       contours = np.array([[X_train[X_train.columns[0]].values, p_train], [X_test[X_test.columns[0]].values, p_test]])
@@ -374,6 +383,13 @@ def kmean_clustering(input_file, transforms, parameters, optimize):
       res_data_set.append([graph, metrics, features])
   return res_data_set
 
+
+def get_features(df_train, y_set):
+  X_set = df_train.values
+  features = []
+  for i, j in enumerate(np.unique(y_set)):
+    features.append([X_set[y_set == j, 0], X_set[y_set == j, 1]])
+  return features
 
 def get_decision_boundaries(classifier, df_train, y_set, num_points_to_plot, transforms, trained_params, type, extra = {}):
   X_set = df_train.values
