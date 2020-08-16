@@ -222,7 +222,7 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     is_regression = algorithmType == 2 or (algorithmType==4 and parameters.get('useSVR', False)) or (parameters.get('regression', False))
 
     if label != 'triple_barrier' and not is_regression:
-      y_test = y_test.astype('int').astype('category')
+      y_train = y_train.astype('int').astype('category')
       y_test = y_test.astype('int').astype('category')
     
     for idx, col in enumerate(parameters['features']):

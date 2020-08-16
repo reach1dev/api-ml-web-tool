@@ -78,7 +78,9 @@ def train_test_split(X, type, k_fold, random_select, n_test_shift, n_train_size)
     return res
   
   if random_select:
-    X_train = X.sample(n=n_train_size, random_state=1)
+    from sklearn import model_selection
+    test_size = X.shape[0] - n_train_size
+    X_train, X_test = model_selection.train_test_split(X, test_size=test_size, random_state=1)
     X_train = X_train.sort_index(axis=0)
     X_train_index = X_train.index - n_test_shift
     X_train_index = X_train_index[X_train_index >= 0]
@@ -87,6 +89,15 @@ def train_test_split(X, type, k_fold, random_select, n_test_shift, n_train_size)
     X_test_index = X.index.difference(X_train.index) - n_test_shift
     X_test_index = X_test_index[X_test_index >= 0]
     X_test = X.loc[X_test_index, :]
+    # X_train = X.sample(n=n_train_size, random_state=1)
+    # X_train = X_train.sort_index(axis=0)
+    # X_train_index = X_train.index - n_test_shift
+    # X_train_index = X_train_index[X_train_index >= 0]
+    # X_train = X.loc[X_train_index, :]
+
+    # X_test_index = X.index.difference(X_train.index) - n_test_shift
+    # X_test_index = X_test_index[X_test_index >= 0]
+    # X_test = X.loc[X_test_index, :]
   else:
     X_train = X[X.index <= n_train_size]
     X_train_index = X_train.index - n_test_shift
