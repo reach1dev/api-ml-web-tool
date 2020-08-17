@@ -208,14 +208,32 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
       classifier = LinearDiscriminantAnalysis()
     elif algorithmType == 7:
       if not parameters.get('regression', False):
-        classifier = DecisionTreeClassifier(max_depth=parameters.get('max_depth', 2), random_state=parameters.get('random_state', 0))
+        classifier = DecisionTreeClassifier(
+          max_depth=parameters.get('max_depth', 2), 
+          random_state=parameters.get('random_state', 0), 
+          criterion=parameters.get('criterion', 'gini')
+        )
       else:
-        classifier = DecisionTreeRegressor(max_depth=parameters.get('max_depth', 2), random_state=parameters.get('random_state', 0))
+        classifier = DecisionTreeRegressor(
+          max_depth=parameters.get('max_depth', 2), 
+          random_state=parameters.get('random_state', 0), 
+          criterion=parameters.get('criterion', 'mse')
+        )
     elif algorithmType == 8:
       if not parameters.get('regression', False):
-        classifier = RandomForestClassifier(max_depth=parameters.get('max_depth', 2), random_state=parameters.get('random_state', 0), n_estimators=parameters.get('n_estimators', 100))
+        classifier = RandomForestClassifier(
+          max_depth=parameters.get('max_depth', 2), 
+          random_state=parameters.get('random_state', 0), 
+          n_estimators=parameters.get('n_estimators', 100), 
+          criterion=parameters.get('criterion', 'gini')
+        )
       else:
-        classifier = RandomForestRegressor(max_depth=parameters.get('max_depth', 2), random_state=parameters.get('random_state', 0), n_estimators=parameters.get('n_estimators', 100))
+        classifier = RandomForestRegressor(
+          max_depth=parameters.get('max_depth', 2), 
+          random_state=parameters.get('random_state', 0), 
+          n_estimators=parameters.get('n_estimators', 100), 
+          criterion=parameters.get('criterion', 'mse')
+        )
       
     y_train = y_train[label]
     y_test = y_test[label]
