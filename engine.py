@@ -408,7 +408,7 @@ def get_decision_boundaries(classifier, df_train, y_set, num_points_to_plot, tra
   X_train, _ = transform_data(X_train, transforms, trained_params)
   X_train = filter_target(X_train, type, extra['inputFilters'], extra['features'], '')
 
-  r = classifier.predict(X_train)
+  r = classifier.predict(X_train.replace([np.inf, -np.inf], np.nan).fillna(0))
   r1 = r.reshape(X1.shape)
 
   contours = measure.find_contours(r1, 0)
