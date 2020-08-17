@@ -104,7 +104,7 @@ def get_metrics(y_true, y_pred, is_regression, algorithmType):
 def knn_optimize(input_file, transforms, parameters, algorithmType):
   train_data_set = prepare_train_test(input_file, transforms, parameters)
   res_data_set = []
-  for df_train, df_test, df_train_labels, df_test_labels in train_data_set:
+  for df_train, df_test, df_train_labels, df_test_labels, _ in train_data_set:
     label = parameters['trainLabel']
     df_train_target = df_train_labels[label]
     df_test_target = df_test_labels[label]
@@ -126,7 +126,7 @@ def knn_optimize(input_file, transforms, parameters, algorithmType):
 def grid_optimize(input_file, transforms, parameters, algorithmType):
   train_data_set = prepare_train_test(input_file, transforms, parameters)
   res_data_set = []
-  for df_train, _, df_train_labels, _ in train_data_set:
+  for df_train, _, df_train_labels, _, _ in train_data_set:
     label = parameters['trainLabel']
     df_train_target = df_train_labels[label]
 
@@ -145,12 +145,18 @@ def grid_optimize(input_file, transforms, parameters, algorithmType):
       params = ['C', 'gamma', 'kernel', 'degree']
     elif algorithmType == 7:
       main_param = 'max_depth'
-      params = ['max_depth', 'random_state']
-      classifier = DecisionTreeClassifier()
+      params = ['max_depth', 'random_state', 'criterion']
+      if parameters['regression']:
+        classifier = DecisionTreeRegressor()
+      else:
+        classifier = DecisionTreeClassifier()
     elif algorithmType == 8:
       main_param = 'max_depth'
-      params = ['max_depth', 'random_state']
-      classifier = RandomForestClassifier()
+      params = ['max_depth', 'random_state', 'criterion']
+      if parameters['regression']:
+        classifier = RandomForestRegressor
+      else:
+        classifier = RandomForestClassifier()
     else:
       continue
 
