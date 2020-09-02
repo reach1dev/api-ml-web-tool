@@ -81,6 +81,14 @@ def save_model_to_db():
     return { 'success': save_model(1, 1, model_name, transforms, parameters) }
 
 
+@app.route('/update-model/<model_id>', methods=['PUT'])
+def update_model_to_db(model_id):
+    transforms = request.json['transforms']
+    parameters = request.json['parameters']
+    from database import update_model
+    return { 'success': update_model(model_id, transforms, parameters) }
+
+
 @app.route('/list-model', methods=['GET'])
 def list_model_from_db():
     from database import load_models
