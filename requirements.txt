@@ -8,3 +8,4 @@ scikit_image==0.14.2
 scikit_learn==0.23.1
 kneed==0.6.0
 imbalanced-learn==0.7.0
+psycopg2-binary==2.8.5
