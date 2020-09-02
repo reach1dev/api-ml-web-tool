@@ -102,7 +102,10 @@ def optimize(file_id):
 
 def inter_train(file_id, optimize = False):
     input_file = pd.read_csv(file_name(file_id))
+    return inter_train_with_file(input_file, optimize)
 
+
+def inter_train_with_file(input_file, optimize):
     transforms = request.json['transforms']
     parameters = request.json['parameters']
     res_file_id = str(uuid.uuid4())
