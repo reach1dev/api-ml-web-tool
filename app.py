@@ -72,6 +72,15 @@ def train_and_test(file_id):
     return inter_train(file_id)
 
 
+@app.route('/save-model', methods=['POST'])
+def save_model_to_db():
+    transforms = request.json['transforms']
+    parameters = request.json['parameters']
+    model_name = request.json['modelName']
+    from database import save_model
+    return { 'success': save_model(1, 1, model_name, transforms, parameters) }
+
+
 @app.route('/optimize/<file_id>', methods=['POST'])
 def optimize(file_id):
     return inter_train(file_id, optimize=True)
