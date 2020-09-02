@@ -81,6 +81,12 @@ def save_model_to_db():
     return { 'success': save_model(1, 1, model_name, transforms, parameters) }
 
 
+@app.route('/list-model', methods=['GET'])
+def list_model_from_db():
+    from database import load_models
+    return load_models(1)
+
+
 @app.route('/optimize/<file_id>', methods=['POST'])
 def optimize(file_id):
     return inter_train(file_id, optimize=True)
