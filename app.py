@@ -31,6 +31,17 @@ INPUT_FILE_LIMIT = 2
 def file_name(file_id: str):
     return 'tmp/' + file_id + '.csv'
 
+
+def get_input_file(file_id: str):
+    if 'data_' in file_id:
+        rd = redis.from_url(os.environ.get("REDIS_URL"))
+        df = pd.read_msgpack(rd.get(file_id.replace('data_', '')))
+    else:
+        file_path = file_name(file_id)
+        df = pd.read_csv(file_path)
+    return df
+
+
 def default(obj):
     if type(obj).__module__ == np.__name__:
         if isinstance(obj, np.ndarray):
@@ -42,13 +53,7 @@ def default(obj):
 
 @app.route('/get-transform-data/<file_id>', methods=['POST'])
 def get_transform_data(file_id):
-    if 'data_' in file_id:
-        rd = redis.from_url(os.environ.get("REDIS_URL"))
-        df = pd.read_msgpack(rd.get(file_id.replace('data_', '')))
-    else:
-        file_path = file_name(file_id)
-        df = pd.read_csv(file_path)
-    print(df.iloc[[-1]])
+    df = get_input_file(file_id)
 
     transforms = request.json['transforms']
     output_data = None
@@ -108,7 +113,7 @@ def optimize(file_id):
 
 
 def inter_train(file_id, optimize = False):
-    input_file = pd.read_csv(file_name(file_id))
+    input_file = get_input_file(file_id)
     return inter_train_with_file(input_file, optimize)
 
 
@@ -210,7 +215,7 @@ def upload_input_data(has_index):
 @app.route('/select-input-data/<file_id>', methods=['POST'])
 def select_input_data(file_id):
     try:
-        df = pd.read_csv (file_name(file_id), index_col=0)
+        df = get_input_file(file_id)
 
         return json.dumps({'file_id': file_id, 'index': df.index.name, 'columns': df.columns.values, 'sample_count': len(df)}, default=default), 200
     except Exception as e:
