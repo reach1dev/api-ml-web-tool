@@ -201,4 +201,14 @@ def upload_input_data(has_index):
         print(e)
         return '', 400
 
+
+@app.route('/select-input-data/<file_id>', methods=['POST'])
+def select_input_data(file_id):
+    try:
+        df = pd.read_csv (file_name(file_id), index_col=0)
+
+        return json.dumps({'file_id': file_id, 'index': df.index.name, 'columns': df.columns.values, 'sample_count': len(df)}, default=default), 200
+    except Exception as e:
+        print(e)
+        return '', 400
 # app.run()
