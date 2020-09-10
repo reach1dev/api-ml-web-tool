@@ -18,6 +18,7 @@ from datetime import datetime
 import threading
 from constants import get_x_unit
 from transformations import transform_data
+import redis
 
 
 app = Flask(__name__)
@@ -28,8 +29,6 @@ INPUT_FILE_LIMIT = 2
 
 
 def file_name(file_id: str):
-    if 'data_' in file_id:
-        return file_id.replace('data_', 'tmp/') + '.txt'
     return 'tmp/' + file_id + '.csv'
 
 def default(obj):
@@ -43,9 +42,12 @@ def default(obj):
 
 @app.route('/get-transform-data/<file_id>', methods=['POST'])
 def get_transform_data(file_id):
-    file_path = file_name(file_id)
-    df = pd.read_csv(file_path)
-    print('file path: ' + file_path)
+    if 'data_' in file_id:
+        rd = redis.from_url(os.environ.get("REDIS_URL"))
+        df = pd.read_msgpack(rd.get(file_id.replace('data_', '')))
+    else:
+        file_path = file_name(file_id)
+        df = pd.read_csv(file_path)
     print(df.iloc[[-1]])
 
     transforms = request.json['transforms']
