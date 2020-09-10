@@ -27,7 +27,9 @@ cors = CORS(app)
 INPUT_FILE_LIMIT = 2
 
 
-def file_name(file_id):
+def file_name(file_id: str):
+    if 'data_' in file_id:
+        return file_id.replace('data_', 'data/') + '.txt'
     return 'tmp/' + file_id + '.csv'
 
 def default(obj):
