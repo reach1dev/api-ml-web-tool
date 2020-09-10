@@ -46,7 +46,7 @@ def get_transform_data(file_id):
     file_path = file_name(file_id)
     df = pd.read_csv(file_path)
     print('file path: ' + file_path)
-    print(pd.iloc[[-1]])
+    print(df.iloc[[-1]])
 
     transforms = request.json['transforms']
     output_data = None
