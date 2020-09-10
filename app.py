@@ -68,7 +68,7 @@ def get_transform_data(file_id):
         
         columns = []
         if output_data is not None:
-            output_data = output_data[output_data.index % N == 0]
+            # output_data = output_data[output_data.index % N == 0]
             columns = pd.DataFrame(data=[output_data.columns.values,output_data.min(),output_data.max()]).to_numpy()
             output_data = output_data.to_numpy()
             # sel = [i%N==0 for i in range(len(output_data))]
