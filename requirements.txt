@@ -10,3 +10,4 @@ kneed==0.6.0
 imbalanced-learn==0.7.0
 psycopg2-binary==2.8.5
 requests==2.24.0
+redis==3.5.3
