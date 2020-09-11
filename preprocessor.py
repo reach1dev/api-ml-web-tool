@@ -105,9 +105,9 @@ def train_test_split(X, type, k_fold, random_select, n_test_shift, n_train_size)
     X_train = X.loc[X_train_index, :]
 
     X_test = X[X.index > n_train_size]
-    X_test_index = X_test.index - n_test_shift
-    X_test_index = X_test_index[X_test_index > n_train_size]
-    X_test = X.loc[X_test_index, :]
+    #X_test_index = X_test.index - n_test_shift
+    #X_test_index = X_test_index[X_test_index > n_train_size]
+    #X_test = X.loc[X_test_index, :]
 
   return [[X_train, X_test]]
 

@@ -114,12 +114,10 @@ def optimize(file_id):
 
 def inter_train(file_id, optimize = False):
     input_file = get_input_file(file_id)
-    return inter_train_with_file(input_file, optimize)
+    return inter_train_with_file(input_file, optimize, request.json['transforms'], request.json['parameters'])
 
 
-def inter_train_with_file(input_file, optimize):
-    transforms = request.json['transforms']
-    parameters = request.json['parameters']
+def inter_train_with_file(input_file, optimize, transforms, parameters):
     res_file_id = str(uuid.uuid4())
     def run_job(res_file_id):
         try:

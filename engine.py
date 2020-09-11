@@ -14,6 +14,8 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble  import RandomForestClassifier
 from sklearn.ensemble  import RandomForestRegressor
+from sklearn.neural_network import MLPClassifier
+from sklearn.neural_network import MLPRegressor
 from sklearn.svm import SVC
 from sklearn.svm import SVR
 from sklearn.decomposition import PCA
@@ -240,6 +242,35 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
           n_estimators=parameters.get('n_estimators', 100), 
           criterion=parameters.get('criterion', 'mse')
         )
+    elif algorithmType == 9:
+      layers = parameters.get('hidden_layer_sizes', '5,2').split(',')
+      hidden_layers = []
+      for layer in layers:
+        hidden_layers.append(int(layer))
+      batch_size = parameters.get('batch_size', 'auto')
+      batch_size = int(batch_size) if batch_size != 'auto' else 'auto'
+      if not parameters.get('regression', False):
+        classifier = MLPClassifier(
+          hidden_layer_sizes=hidden_layers,
+          solver=parameters.get('solver', 'sgd'),
+          alpha=parameters.get('alpha', 0.00001),
+          random_state=parameters.get('random_state', 0),
+          learning_rate_init=parameters.get('learning_rate_init', 0.001),
+          learning_rate=parameters.get('learning_rate', 'constant'),
+          batch_size=batch_size,
+          max_iter=500
+        )
+      else:
+        classifier = MLPRegressor(
+          hidden_layer_sizes=hidden_layers,
+          solver=parameters.get('solver', 'sgd'),
+          alpha=parameters.get('alpha', 0.00001),
+          random_state=parameters.get('random_state', 0),
+          learning_rate_init=parameters.get('learning_rate_init', 0.001),
+          learning_rate=parameters.get('learning_rate', 'constant'),
+          batch_size=batch_size,
+          max_iter=500
+        )
       
     y_train = y_train[label]
     y_test = y_test[label]
@@ -247,7 +278,7 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
 
     if label != 'triple_barrier' and not is_regression:
       y_train = y_train.astype('int').astype('category')
-      y_test = y_test.astype('int').astype('category')
+      y_test = y_test.fillna(0).astype('int').astype('category')
     
     for idx, col in enumerate(parameters['features']):
       if col == label and parameters['inputFilters'][idx] == False:
@@ -264,16 +295,16 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     p_test = classifier.predict(X_test)
     
     test_shift = parameters['testShift'] if parameters['trainLabel'] != 'triple_barrier' else 0
-    df_test_score, df_test_cm = get_metrics(y_test, p_test, is_regression, algorithmType)
+    y_test1 = y_test.dropna()
+    df_test_score, df_test_cm = get_metrics(y_test1, p_test[:len(y_test1)], is_regression, algorithmType)
     df_train_score, _ = get_metrics(y_train, p_train, is_regression, algorithmType)
-    N = 1 # int(rc / 500.0)
     
-    date_index = input_file.loc[y_test.index+test_shift, input_file.columns[0]]
+    date_index = input_file.loc[y_test.index, input_file.columns[0]]
     date_index = date_index.dropna()
     res = [np.array(date_index) ]
     
-    y_test = y_test.to_numpy()[[x for x in range(y_test.shape[0]) if x%N == 0]]
-    p_test = p_test[[x for x in range(p_test.shape[0]) if x%N == 0]]
+    y_test = y_test.fillna(0).to_numpy()
+    # p_test = p_test
     res.append(y_test)
     res.append(p_test)
     
