@@ -217,7 +217,7 @@ def select_input_data(file_id):
     try:
         df = get_input_file(file_id)
 
-        return json.dumps({'file_id': file_id, 'index': 'Date', 'columns': df.columns.values, 'sample_count': len(df)}, default=default), 200
+        return json.dumps({'file_id': file_id, 'index': 'Date', 'columns': df.columns.values[1:], 'sample_count': len(df)}, default=default), 200
     except Exception as e:
         print(e)
         return '', 400
