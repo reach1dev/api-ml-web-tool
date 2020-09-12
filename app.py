@@ -225,5 +225,6 @@ def select_input_data(file_id):
 def test_autoupdate():
     from autoupdate import autoupdate
     autoupdate()
+    return 'success', 200
 
 # app.run()
