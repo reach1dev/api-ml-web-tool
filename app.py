@@ -224,7 +224,6 @@ def select_input_data(file_id):
 @app.route('/test-autoupdate', methods=['GET'])
 def test_autoupdate():
     from autoupdate import autoupdate
-    autoupdate()
-    return 'success', 200
+    return autoupdate(), 200
 
 # app.run()
