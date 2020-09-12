@@ -219,4 +219,11 @@ def select_input_data(file_id):
     except Exception as e:
         print(e)
         return '', 400
+
+
+@app.route('/test-autoupdate', methods=['GET'])
+def test_autoupdate():
+    from autoupdate import autoupdate
+    autoupdate()
+
 # app.run()
