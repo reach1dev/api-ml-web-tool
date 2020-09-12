@@ -101,6 +101,12 @@ def update_model_to_db(model_id):
     return { 'success': update_model(model_id, transforms, parameters) }
 
 
+@app.route('/remove-model/<model_id>', methods=['DELETE'])
+def remove_model_from_db(model_id):
+    from database import remove_model
+    return { 'success': remove_model(model_id) }
+
+
 @app.route('/list-model', methods=['GET'])
 def list_model_from_db():
     from database import load_models
