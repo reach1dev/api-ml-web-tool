@@ -426,16 +426,21 @@ def kmean_clustering(input_file, transforms, parameters, optimize):
     else:
       metrics = []
     
-    features = []
+    test_features = []
     if df_test.shape[1] == 3:
       for c in range(0, n_clusters):
         df_test_1 = df_test[df_test['Tar'] == c]
-        features.append([df_test_1.values[:, 0], df_test_1.values[:, 1]])
+        test_features.append([df_test_1.values[:, 0], df_test_1.values[:, 1]])
+    train_features = []
+    if df_train.shape[1] == 3:
+      for c in range(0, n_clusters):
+        df_train_1 = df_train[df_train['Tar'] == c]
+        train_features.append([df_train_1.values[:, 0], df_train_1.values[:, 1]])
     
     if optimize:
       res_data_set.append([np.array([X, Y]).T, {'n_clusters': n_clusters, 'init': init[0], 'random_state': random_state[0]}, features])
     else:
-      res_data_set.append([graph, metrics, features])
+      res_data_set.append([graph, metrics, [train_features, test_features]])
   return res_data_set
 
 
