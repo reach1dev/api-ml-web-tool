@@ -169,6 +169,7 @@ def auth_signup():
     post_data = request.get_json()
     from database import check_user
     user = check_user(post_data['username'], post_data['password'])
+    print(user)
     if user is not None and user['email'] is '':
         from database import update_user
         if update_user(post_data['username'], post_data['email'], post_data['fullname']):
