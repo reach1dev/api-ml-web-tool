@@ -197,9 +197,6 @@ def account_update():
     user = auth.current_user()
     post_data = request.get_json()
     from database import update_user
-    print('username to update = ' + user['username'])
-    print('email to update = ' + post_data['email'])
-    print('email to fullname = ' + post_data['fullname'])
     if update_user(user['username'], post_data['email'], post_data['fullname']):
         return {
             'success': True
