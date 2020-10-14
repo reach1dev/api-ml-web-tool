@@ -195,20 +195,16 @@ def auth_signup():
 @auth.login_required
 def account_update():
     user = auth.current_user()
-    print(user)
     post_data = request.get_json()
-    #from database import update_user
-    # if update_user(user['username'], post_data['email'], post_data['fullname']):
-    #     return {
-    #         'success': True
-    #     }
-    # else:
-    #     return {
-    #         'success': False
-    #     }
-    return {
-        'success': True
-    }
+    from database import update_user
+    if update_user(user['username'], post_data['email'], post_data['fullname']):
+        return {
+            'success': True
+        }
+    else:
+        return {
+            'success': False
+        }
 
 
 @app.route('/account/upload', methods=['POST'])
