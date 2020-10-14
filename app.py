@@ -19,10 +19,16 @@ import threading
 from constants import get_x_unit
 from transformations import transform_data
 import redis
+import jwt
+from flask_httpauth import HTTPTokenAuth, HTTPBasicAuth
 
 
 app = Flask(__name__)
 cors = CORS(app)
+auth = HTTPTokenAuth(scheme='Bearer')
+
+JWT_SECRET = 'secret'
+JWT_ALGORITHM = 'HS256'
 
 
 INPUT_FILE_LIMIT = 2
@@ -49,6 +55,18 @@ def default(obj):
         else:
             return obj.item()
     raise TypeError('Unknown type:', type(obj))
+
+
+@auth.verify_token
+def verify_token(token):
+    print(token)
+    payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    t1 = datetime.strptime(payload['time'], '%Y-%m-%d %H:%M:%S')
+    t2 = datetime.now()
+    if (t2-t1).seconds < 3600:
+        from database import find_user
+        return find_user(payload['username'])
+    return None
 
 
 @app.route('/get-transform-data/<file_id>', methods=['POST'])
@@ -85,15 +103,19 @@ def train_and_test(file_id):
 
 
 @app.route('/save-model', methods=['POST'])
+@auth.login_required
 def save_model_to_db():
+    if auth.current_user() is None:
+        return '', 401
     transforms = request.json['transforms']
     parameters = request.json['parameters']
     model_name = request.json['modelName']
     from database import save_model
-    return { 'success': save_model(1, 1, model_name, transforms, parameters) }
+    return { 'success': save_model(auth.current_user()['user_id'], 1, model_name, transforms, parameters) }
 
 
 @app.route('/update-model/<model_id>', methods=['PUT'])
+@auth.login_required
 def update_model_to_db(model_id):
     transforms = request.json['transforms']
     parameters = request.json['parameters']
@@ -102,20 +124,115 @@ def update_model_to_db(model_id):
 
 
 @app.route('/remove-model/<model_id>', methods=['DELETE'])
+@auth.login_required
 def remove_model_from_db(model_id):
     from database import remove_model
     return { 'success': remove_model(model_id) }
 
 
 @app.route('/list-model', methods=['GET'])
+@auth.login_required
 def list_model_from_db():
+    if auth.current_user() is None:
+        return '', 401
     from database import load_models
-    return load_models(1)
+    return load_models(auth.current_user()['user_id'])
 
 
 @app.route('/optimize/<file_id>', methods=['POST'])
 def optimize(file_id):
     return inter_train(file_id, optimize=True)
+
+
+@app.route('/auth/login', methods=['POST'])
+def auth_login():
+    post_data = request.get_json()
+    from database import check_user
+    user = check_user(post_data['username'], post_data['password'])
+    if user is not None and user['email'] is not '':
+        token = jwt.encode({
+            'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'username': post_data['username']
+        }, JWT_SECRET, algorithm=JWT_ALGORITHM).decode('utf-8')
+        return {
+            'success': True,
+            'token': token
+        }
+    return {
+        'success': False,
+        'reason': 'no_account' if user is None else 'signup_required'
+    }
+
+
+@app.route('/auth/signup', methods=['POST'])
+def auth_signup():
+    post_data = request.get_json()
+    from database import check_user
+    user = check_user(post_data['username'], post_data['password'])
+    if user is not None and user['email'] is '':
+        from database import update_user
+        if update_user(post_data['username'], post_data['email'], post_data['fullname']):
+            token = jwt.encode({
+                'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'username': post_data['username']
+            }, JWT_SECRET, algorithm=[JWT_ALGORITHM])
+            return {
+                'success': True,
+                'token': token
+            }
+        else:
+            return {
+                'success': False,
+                'reason': 'creation_failed'
+            }
+    return {
+        'success': False,
+        'reason': 'no_account' if user is None else 'already_created'
+    }
+
+
+@app.route('/account/update', methods=['POST'])
+@auth.login_required
+def account_update():
+    user = auth.current_user()
+    print(user)
+    post_data = request.get_json()
+    #from database import update_user
+    # if update_user(user['username'], post_data['email'], post_data['fullname']):
+    #     return {
+    #         'success': True
+    #     }
+    # else:
+    #     return {
+    #         'success': False
+    #     }
+    return {
+        'success': True
+    }
+
+
+@app.route('/account/upload', methods=['POST'])
+@auth.login_required
+def account_upload():
+    user = auth.current_user()
+    if user['username'] == 'admin':
+        file = request.files['file']
+        df = pd.read_csv (file)
+        users = []
+        for row in df:
+            users.append({
+                'username': row['username'],
+                'password': row['password']
+            })
+        from database import upload_users
+        upload_users(users)
+        return {
+            'success': True
+        }
+    else:
+        return {
+            'success': False
+        }
 
 
 def inter_train(file_id, optimize = False):
