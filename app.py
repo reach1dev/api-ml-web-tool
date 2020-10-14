@@ -156,7 +156,9 @@ def auth_login():
         }, JWT_SECRET, algorithm=JWT_ALGORITHM).decode('utf-8')
         return {
             'success': True,
-            'token': token
+            'token': token,
+            'fullName': user['full_name'],
+            'email': user['email']
         }
     return {
         'success': False,
