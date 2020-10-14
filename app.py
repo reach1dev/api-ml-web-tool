@@ -175,7 +175,7 @@ def auth_signup():
             token = jwt.encode({
                 'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'username': post_data['username']
-            }, JWT_SECRET, algorithm=[JWT_ALGORITHM])
+            }, JWT_SECRET, algorithm=JWT_ALGORITHM).decode('utf-8')
             return {
                 'success': True,
                 'token': token
