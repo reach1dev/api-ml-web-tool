@@ -216,7 +216,7 @@ def account_upload():
         file = request.files['file']
         df = pd.read_csv (file)
         users = []
-        for row in df:
+        for _, row in df.iterrows():
             users.append({
                 'username': row['username'],
                 'password': row['password']
