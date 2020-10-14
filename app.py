@@ -157,7 +157,7 @@ def auth_login():
         return {
             'success': True,
             'token': token,
-            'fullName': user['full_name'],
+            'fullName': user['fullName'],
             'email': user['email']
         }
     return {
