@@ -227,7 +227,7 @@ def account_upload():
         res = upload_users(users)
         return {
             'success': res,
-            'added_users': res ? len(users) : 0
+            'added_users': len(users) if res else 0
         }
     else:
         return {
