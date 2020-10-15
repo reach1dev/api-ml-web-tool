@@ -219,10 +219,7 @@ def account_upload():
         df = pd.read_csv (file)
         users = []
         for _, row in df.iterrows():
-            users.append({
-                'username': row['username'],
-                'password': row['password']
-            })
+            users.append([row['username'], row['password']])
         from database import upload_users
         res = upload_users(users)
         return {
