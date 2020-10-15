@@ -149,7 +149,7 @@ def auth_login():
     post_data = request.get_json()
     from database import check_user
     user = check_user(post_data['username'], post_data['password'])
-    if user is not None and (user['email'] is None or user['email'] != ''):
+    if user is not None and (user['email'] is not None and user['email'] != ''):
         token = jwt.encode({
             'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'username': post_data['username']
