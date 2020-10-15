@@ -224,9 +224,10 @@ def account_upload():
                 'password': row['password']
             })
         from database import upload_users
-        upload_users(users)
+        res = upload_users(users)
         return {
-            'success': True
+            'success': res,
+            'added_users': res ? len(users) : 0
         }
     else:
         return {
