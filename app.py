@@ -63,7 +63,7 @@ def verify_token(token):
     payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
     t1 = datetime.strptime(payload['time'], '%Y-%m-%d %H:%M:%S')
     t2 = datetime.now()
-    if (t2-t1).seconds < 3600:
+    if (t2-t1).seconds < 12*3600:
         from database import find_user
         return find_user(payload['username'])
     return None
