@@ -148,6 +148,12 @@ def log_return(df, length=1):
 
 
 def clip_dataframe(df, min, max, scale=1):
+  if isinstance(min, str):
+    min = float(min)
+  if isinstance(max, str):
+    max = float(max)
+  if isinstance(scale, str):
+    scale = float(scale)
   return df.clip(min, max) * scale
 
 
