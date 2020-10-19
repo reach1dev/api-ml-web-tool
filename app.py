@@ -352,10 +352,10 @@ def test_autoupdate():
 @app.route('/account/alerts', methods=['PUT'])
 @auth.login_required
 def account_update_alerts_settings():
-    user_id = auth.current_user()['user_id']
+    username = auth.current_user()['username']
     post_data = request.get_json()
     from database import update_user_alerts
-    if update_user_alerts(user_id, post_data['webAlerts'], post_data['emailAlerts']):
+    if update_user_alerts(username, post_data['webAlerts'], post_data['emailAlerts']):
         return {
             'success': True
         }
