@@ -158,7 +158,9 @@ def auth_login():
             'success': True,
             'token': token,
             'fullName': user['fullName'],
-            'email': user['email']
+            'email': user['email'],
+            'webAlerts': user['webAlerts'],
+            'emailAlerts': user['emailAlerts']
         }
     return {
         'success': False,
@@ -344,6 +346,22 @@ def select_input_data(file_id):
 @app.route('/test-autoupdate', methods=['GET'])
 def test_autoupdate():
     from autoupdate import autoupdate
-    return autoupdate(), 200
+    return autoupdate(1, 'test@gmail.com'), 200
+
+
+@app.route('/account/alerts', methods=['PUT'])
+@auth.login_required
+def account_update_alerts_settings():
+    user_id = auth.current_user()['user_id']
+    post_data = request.get_json()
+    from database import update_user_alerts
+    if update_user_alerts(user_id, post_data['webAlerts'], post_data['emailAlerts']):
+        return {
+            'success': True
+        }
+    else:
+        return {
+            'success': False
+        }
 
 # app.run()
