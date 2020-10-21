@@ -347,7 +347,7 @@ def select_input_data(file_id):
 def test_autoupdate():
     from autoupdate import autoupdate
     refresh_token = 'anFTNnVJSDhTTU5wUHdhOEJSNEh6NG5aMUNzS2lFN0ZyNVRENmk0bE5YNVhINFMxeTZMOFF3RkU4aEFqcm02MCswSE9lS1AvVUpjYThIZ3hpQ3BlanNGUnQ3ZHB6UUsvWXR4NmJoSklNVkVUS2Rjem9PSHNsRnR5UWZVODRJeUNzcnpMK2VWRHdXVWR5S2k0RGxtS2FiYm9qNDlGWkFSOFBmOVo3UURrMnl6SzI3bWQrTDduaUZHYUl2dFZTNUJ2MVhyYTV2ZTMrNHU4a2FPQkorSGRMemFJTWRhNHpLRjBhcGJsVFpmODJSOEJsVmFEYnRDeEs4bURWOTJGbGRoTw=='
-    return autoupdate(1, refresh_token, 'mauth4444@gmail.com'), 200
+    return autoupdate(1, 'admin', refresh_token, 'mauth4444@gmail.com', 't', 't'), 200
 
 
 @app.route('/account/alerts', methods=['PUT'])
