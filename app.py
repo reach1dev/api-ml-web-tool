@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, redirect
 from flask import request
 from io import StringIO
 import pandas as pd
@@ -346,7 +346,8 @@ def select_input_data(file_id):
 @app.route('/test-autoupdate', methods=['GET'])
 def test_autoupdate():
     from autoupdate import autoupdate
-    return autoupdate(1, 'test@gmail.com'), 200
+    refresh_token = 'anFTNnVJSDhTTU5wUHdhOEJSNEh6NG5aMUNzS2lFN0ZyNVRENmk0bE5YNVhINFMxeTZMOFF3RkU4aEFqcm02MCswSE9lS1AvVUpjYThIZ3hpQ3BlanNGUnQ3ZHB6UUsvWXR4NmJoSklNVkVUS2Rjem9PSHNsRnR5UWZVODRJeUNzcnpMK2VWRHdXVWR5S2k0RGxtS2FiYm9qNDlGWkFSOFBmOVo3UURrMnl6SzI3bWQrTDduaUZHYUl2dFZTNUJ2MVhyYTV2ZTMrNHU4a2FPQkorSGRMemFJTWRhNHpLRjBhcGJsVFpmODJSOEJsVmFEYnRDeEs4bURWOTJGbGRoTw=='
+    return autoupdate(1, refresh_token, 'mauth4444@gmail.com'), 200
 
 
 @app.route('/account/alerts', methods=['PUT'])
@@ -363,5 +364,18 @@ def account_update_alerts_settings():
         return {
             'success': False
         }
+
+
+@app.route('/account/tsapi_callback', methods=['GET'])
+@auth.login_required
+def account_tsapi_callback():
+    username = auth.current_user()['username']
+    auth_code = request.args.get('code')
+    from tsapi import get_token
+    result = get_token(auth_code)
+    from database import update_user_tsapi_tokens
+    update_user_tsapi_tokens(username, result.access_token, result.refresh_token)
+    return redirect("https://ml-web-tool.herokuapp.com/")
+
 
 # app.run()
