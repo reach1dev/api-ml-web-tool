@@ -378,4 +378,11 @@ def account_tsapi_callback():
     return redirect("https://ml-web-tool.herokuapp.com/")
 
 
+@app.route('/account/web_alert', methods=['GET'])
+@auth.login_required
+def get_web_alert():
+    username = auth.current_user()['username']
+    from database import get_alert_by_username
+    alert = get_alert_by_username(username)
+    return alert
 # app.run()
