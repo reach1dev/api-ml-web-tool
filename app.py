@@ -346,7 +346,7 @@ def select_input_data(file_id):
 @app.route('/test-autoupdate', methods=['GET'])
 def test_autoupdate():
     from autoupdate import autoupdate
-    refresh_token = 'anFTNnVJSDhTTU5wUHdhOEJSNEh6NG5aMUNzS2lFN0ZyNVRENmk0bE5YNVhINFMxeTZMOFF3RkU4aEFqcm02MCswSE9lS1AvVUpjYThIZ3hpQ3BlanNGUnQ3ZHB6UUsvWXR4NmJoSklNVkVUS2Rjem9PSHNsRnR5UWZVODRJeUNzcnpMK2VWRHdXVWR5S2k0RGxtS2FiYm9qNDlGWkFSOFBmOVo3UURrMnl6SzI3bWQrTDduaUZHYUl2dFZTNUJ2MVhyYTV2ZTMrNHU4a2FPQkorSGRMemFJTWRhNHpLRjBhcGJsVFpmODJSOEJsVmFEYnRDeEs4bURWOTJGbGRoTw=='
+    refresh_token = 'aWRnZlRGT2VqNzBIeThjYTQvSHhtYjRPZC9UM0tjVlI4WGRWVkdzSEJjdS9keW1sTUlhV3QyR2N1aG1vVUJXdWl6UVd0WUF6YnU0cmpwUmNWem15bmxGS2ExOUQ3c2VKZ0hyVFhKeXRiNTR1YThma0Y4T1dUTHlQbExiSjZwZlBESXNLdkhkSmtQUEllSUZLQUlIM1BNWDZtWmxIcUdMOFVudWU5ZFFKQXJOVmlQWVJKQzZCNmExUDlGR3pBOTdPZXRaQVBRcFVhUXg5R05MQkxLZTNiMnpkd2t6cjk2ak55blpZV2xNeGJYdm8rSlluZWpjR1NTU0h0ZEdyZ0U5OFlKTmlXbDdEMG94MFE2U05nZzNSTkE9PQ=='
     return autoupdate(1, 'admin', refresh_token, 'mauth4444@gmail.com', 't', 't'), 200
 
 
