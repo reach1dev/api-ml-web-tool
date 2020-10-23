@@ -366,10 +366,9 @@ def account_update_alerts_settings():
         }
 
 
-@app.route('/account/tsapi_callback', methods=['GET'])
-def account_tsapi_callback():
+@app.route('/account/tsapi_callback/<token>', methods=['GET'])
+def account_tsapi_callback(token):
     auth_code = request.args.get('code')
-    token = request.args.get('token')
     user = verify_token(token)
     if user is None:
         return redirect("https://ml-web-tool.herokuapp.com/")
