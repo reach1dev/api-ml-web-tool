@@ -367,10 +367,13 @@ def account_update_alerts_settings():
 
 
 @app.route('/account/tsapi_callback', methods=['GET'])
-@auth.login_required
 def account_tsapi_callback():
-    username = auth.current_user()['username']
     auth_code = request.args.get('code')
+    token = request.args.get('token')
+    user = verify_token(token)
+    if user is None:
+        return redirect("https://ml-web-tool.herokuapp.com/")
+    username = user['username']
     from tsapi import get_token
     result = get_token(auth_code)
     from database import update_user_tsapi_tokens
