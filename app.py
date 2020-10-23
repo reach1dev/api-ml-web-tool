@@ -377,7 +377,7 @@ def account_tsapi_callback(token):
     result = get_token(token, auth_code)
     if result is not None:
         from database import update_user_tsapi_tokens
-        update_user_tsapi_tokens(username, result['access_token'], result.['refresh_token'])
+        update_user_tsapi_tokens(username, result['access_token'], result['refresh_token'])
     return redirect("https://ml-web-tool.herokuapp.com/")
 
 
