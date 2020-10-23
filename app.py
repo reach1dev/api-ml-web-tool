@@ -384,5 +384,7 @@ def get_web_alert():
     username = auth.current_user()['username']
     from database import get_alert_by_username
     alert = get_alert_by_username(username)
+    if alert is None:
+        return '', 404
     return alert
 # app.run()
