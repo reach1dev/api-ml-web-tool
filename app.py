@@ -345,9 +345,17 @@ def select_input_data(file_id):
 
 @app.route('/test-autoupdate', methods=['GET'])
 def test_autoupdate():
-    from autoupdate import autoupdate
-    refresh_token = 'aWRnZlRGT2VqNzBIeThjYTQvSHhtYjRPZC9UM0tjVlI4WGRWVkdzSEJjdS9keW1sTUlhV3QyR2N1aG1vVUJXdWl6UVd0WUF6YnU0cmpwUmNWem15bmxGS2ExOUQ3c2VKZ0hyVFhKeXRiNTR1YThma0Y4T1dUTHlQbExiSjZwZlBESXNLdkhkSmtQUEllSUZLQUlIM1BNWDZtWmxIcUdMOFVudWU5ZFFKQXJOVmlQWVJKQzZCNmExUDlGR3pBOTdPZXRaQVBRcFVhUXg5R05MQkxLZTNiMnpkd2t6cjk2ak55blpZV2xNeGJYdm8rSlluZWpjR1NTU0h0ZEdyZ0U5OFlKTmlXbDdEMG94MFE2U05nZzNSTkE9PQ=='
-    return autoupdate(1, 'admin', refresh_token, 'mauth4444@gmail.com', 't', 't'), 200
+    from database import load_users
+    result = load_users()
+    if result['success']:
+        for user in result['users']:
+            if user['model_count'] > 0:
+                try:
+                    from autoupdate import autoupdate
+                    autoupdate(user['user_id'], user['username'], user['refresh_token'], user['email'], user['web_alert'], user['email_alert'])
+                except Exception as e:
+                    print(e)
+    return '',200
 
 
 @app.route('/account/alerts', methods=['PUT'])
