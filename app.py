@@ -382,9 +382,10 @@ def account_tsapi_callback():
 @auth.login_required
 def get_web_alert():
     username = auth.current_user()['username']
-    from database import get_alert_by_username
+    from database import get_alert_by_username, pop_user_alerts
     alert = get_alert_by_username(username)
     if alert is None:
         return '', 404
+    pop_user_alerts(alert['alert_id'])
     return alert
 # app.run()
