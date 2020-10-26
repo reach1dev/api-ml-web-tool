@@ -38,10 +38,28 @@ def file_name(file_id: str):
     return 'tmp/' + file_id + '.csv'
 
 
-def get_input_file(file_id: str):
-    if 'data_' in file_id:
+def get_input_file(file_id: str, refresh_token = None):
+    if 'TSData_' in file_id:
+        if refresh_token is None:
+            return None
         rd = redis.from_url(os.environ.get("REDIS_URL"))
-        df = pd.read_msgpack(rd.get(file_id.replace('data_', '')))
+        rd_file = rd.get(file_id)
+        if rd_file is not None:
+            df = pd.read_msgpack(rd_file)
+        else:
+            file_params = file_id.split('_')
+            if len(file_params) < 3:
+                return None
+            symbol = file_params[1]
+            frequency = file_params[2]
+            from tsapi import load_ts_prices
+            from tsapi import get_access_token
+            access_token = get_access_token(refresh_token)
+            df = load_ts_prices(access_token, symbol, frequency)
+            if df is None:
+                return None
+            rd.set(file_id, df.to_msgpack(compress='zlib'))
+            return df
     else:
         file_path = file_name(file_id)
         df = pd.read_csv(file_path)
@@ -333,10 +351,11 @@ def upload_input_data(has_index):
 
 
 @app.route('/select-input-data/<file_id>', methods=['POST'])
+@auth.login_required
 def select_input_data(file_id):
     try:
-        df = get_input_file(file_id)
-
+        user = auth.current_user()
+        df = get_input_file(file_id, refresh_token=user['refresh_token'])
         return json.dumps({'file_id': file_id, 'index': 'Date', 'columns': df.columns.values[1:], 'sample_count': len(df)}, default=default), 200
     except Exception as e:
         print(e)
