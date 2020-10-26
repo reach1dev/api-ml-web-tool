@@ -353,13 +353,9 @@ def upload_input_data(has_index):
 @app.route('/select-input-data/<file_id>', methods=['POST'])
 @auth.login_required
 def select_input_data(file_id):
-    try:
-        user = auth.current_user()
-        df = get_input_file(file_id, refresh_token=user['refresh_token'])
-        return json.dumps({'file_id': file_id, 'index': 'Date', 'columns': df.columns.values[1:], 'sample_count': len(df)}, default=default), 200
-    except Exception as e:
-        print(e)
-        return '', 400
+    user = auth.current_user()
+    df = get_input_file(file_id, refresh_token=user['refresh_token'])
+    return json.dumps({'file_id': file_id, 'index': 'Date', 'columns': df.columns.values[1:], 'sample_count': len(df)}, default=default), 200
 
 
 @app.route('/test-autoupdate', methods=['GET'])
