@@ -302,7 +302,7 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     # date_index = date_index.dropna()
     date_index = []
     for idx in y_test.index:
-      date_index.append(df.loc[[idx], input_file.columns[0]].item() + ' ' + df.loc[[idx], input_file.columns[1]].item())
+      date_index.append(input_file.loc[[idx], input_file.columns[0]].item() + ' ' + input_file.loc[[idx], input_file.columns[1]].item())
     res = [np.array(date_index) ]
     
     y_test = y_test.fillna(0).to_numpy()
