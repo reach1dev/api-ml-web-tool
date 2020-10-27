@@ -414,7 +414,7 @@ def get_web_alert():
     from database import get_alert_by_username, pop_user_alerts
     alert = get_alert_by_username(username)
     if alert is None:
-        return 204
+        return '', 204
     pop_user_alerts(alert['alert_id'])
     return alert
 # app.run()
