@@ -83,7 +83,7 @@ def verify_token(token):
     t2 = datetime.now()
     print("current time = " + t2.strftime('%Y-%m-%d %H:%M:%S'))
     print("token time = " + payload['time'])
-    print("delta seconds = " + (t2-t1).seconds)
+    print("delta seconds = " + str((t2-t1).seconds))
     if (t2-t1).seconds < 12*3600:
         from database import find_user
         return find_user(payload['username'])
