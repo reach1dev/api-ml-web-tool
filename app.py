@@ -40,13 +40,11 @@ def file_name(file_id: str):
 
 def get_input_file(file_id: str, refresh_token = None):
     if 'TSData_' in file_id:
-        if refresh_token is None:
-            return None
         rd = redis.from_url(os.environ.get("REDIS_URL"))
         rd_file = rd.get(file_id)
         if rd_file is not None:
             df = pd.read_msgpack(rd_file)
-        else:
+        elif refresh_token is not None:
             file_params = file_id.split('_')
             if len(file_params) < 3:
                 return None
@@ -59,7 +57,8 @@ def get_input_file(file_id: str, refresh_token = None):
             if df is None:
                 return None
             rd.set(file_id, df.to_msgpack(compress='zlib'))
-            return df
+        else:
+            return None
     else:
         file_path = file_name(file_id)
         df = pd.read_csv(file_path)
