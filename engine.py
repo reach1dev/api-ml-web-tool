@@ -303,6 +303,7 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     date_index = input_file.loc[y_test.index, "DateTime"]
     date_index = date_index.dropna()
     res = [np.array(date_index) ]
+    del input_file["DateTime"]
     
     y_test = y_test.fillna(0).to_numpy()
     # p_test = p_test
