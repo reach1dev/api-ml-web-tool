@@ -299,8 +299,8 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     df_test_score, df_test_cm = get_metrics(y_test1, p_test[:len(y_test1)], is_regression, algorithmType)
     df_train_score, _ = get_metrics(y_train, p_train, is_regression, algorithmType)
     
-    input_file["Date"] = input_file["Date"] + " " + input_file["Time"]
-    date_index = input_file.loc[y_test.index, "Date"]
+    input_file["DateTime"] = input_file["Date"] + " " + input_file["Time"]
+    date_index = input_file.loc[y_test.index, "DateTime"]
     date_index = date_index.dropna()
     res = [np.array(date_index) ]
     
