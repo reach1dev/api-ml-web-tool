@@ -373,11 +373,11 @@ def test_autoupdate():
     if result['success']:
         for user in result['users']:
             if user['model_count'] > 0:
-                try:
-                    from autoupdate import autoupdate
-                    autoupdate(user['user_id'], user['username'], user['refresh_token'], user['email'], user['web_alert'], user['email_alert'])
-                except Exception as e:
-                    print(e)
+                # try:
+                from autoupdate import autoupdate
+                autoupdate(user['user_id'], user['username'], user['refresh_token'], user['email'], user['email_alert'])
+                # except Exception as e:
+                #     print(e)
     return '',200
 
 
