@@ -428,6 +428,7 @@ def get_web_alert():
             'alert_content': result
         }
     elif status == 'error':
+        print (result)
         return result, 204
     else:
         return "unknown error", 204
