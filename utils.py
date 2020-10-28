@@ -39,12 +39,12 @@ def parse_prices(lines: str):
     data.append([
       dt.strftime('%m/%d/%Y'),
       dt.strftime('%H:%M:%S'),
-      prices['Open'],
-      prices['High'],
-      prices['Low'],
-      prices['Close'],
+      float(prices['Open']),
+      float(prices['High']),
+      float(prices['Low']),
+      float(prices['Close']),
       float(prices['TotalVolume']),
-      prices['OpenInterest'],
+      float(prices['OpenInterest']),
     ])
   df = pandas.DataFrame(data, columns = ['Date', 'Time', 'Open', 'High', 'Low', 'Close', 'Vol', 'OI'])
   return df
