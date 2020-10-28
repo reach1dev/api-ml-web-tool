@@ -29,7 +29,6 @@ def transform_data(df, transform, parentId, trained_params):
 
   if tool == 114:
     try:
-      print(df)
       df[params['name']] = df.eval(params['expression'])
     except Exception as e:
       print(e)

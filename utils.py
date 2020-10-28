@@ -43,7 +43,7 @@ def parse_prices(lines: str):
       prices['High'],
       prices['Low'],
       prices['Close'],
-      prices['TotalVolume'],
+      float(prices['TotalVolume']),
       prices['OpenInterest'],
     ])
   df = pandas.DataFrame(data, columns = ['Date', 'Time', 'Open', 'High', 'Low', 'Close', 'Vol', 'OI'])
