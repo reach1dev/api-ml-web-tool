@@ -422,10 +422,13 @@ def get_web_alert():
     email_alert = auth.current_user()['email_alert']
 
     from autoupdate import autoupdate
-    result_html = autoupdate(user_id, username, refresh_token, user_email, email_alert)
-    if result_html is None:
-        return '', 204
-    return {
-        'alert_content': result_html
-    }
+    status, result = autoupdate(user_id, username, refresh_token, user_email, email_alert)
+    if status == 'success':
+        return {
+            'alert_content': result
+        }
+    elif status == 'error':
+        return result, 204
+    else:
+        return "unknown error", 204
 # app.run()
