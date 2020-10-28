@@ -26,7 +26,7 @@ def convert_frequency(frequency: str):
 def parse_prices(lines: str):
   data = []
   for line in lines.splitlines():
-    if 'END' in line:
+    if 'END' in line or line is None or line == "":
       break
     prices = json.loads(line)
     ts = float(prices['TimeStamp'].replace('/Date(', '').replace(')/', '')) / 1000
