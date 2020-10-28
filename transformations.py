@@ -30,7 +30,8 @@ def transform_data(df, transform, parentId, trained_params):
   if tool == 114:
     try:
       df[params['name']] = df.eval(params['expression'])
-    except:
+    except Exception as e:
+      print(e)
       return df, trained_params
     return df.replace([np.inf, -np.inf], np.nan).fillna(0), trained_params
   
