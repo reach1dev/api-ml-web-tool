@@ -130,8 +130,11 @@ def save_model_to_db():
     transforms = request.json['transforms']
     parameters = request.json['parameters']
     model_name = request.json['modelName']
+    input_file_id = request.json['inputFileId']
+    symbol = input_file_id.split("_")[1]
+    frequency = input_file_id.split("_")[2]
     from database import save_model
-    return { 'success': save_model(auth.current_user()['user_id'], 1, model_name, transforms, parameters) }
+    return { 'success': save_model(auth.current_user()['user_id'], model_name, symbol, frequency, transforms, parameters) }
 
 
 @app.route('/update-model/<model_id>', methods=['PUT'])
@@ -139,8 +142,11 @@ def save_model_to_db():
 def update_model_to_db(model_id):
     transforms = request.json['transforms']
     parameters = request.json['parameters']
+    input_file_id = request.json['inputFileId']
+    symbol = input_file_id.split("_")[1]
+    frequency = input_file_id.split("_")[2]
     from database import update_model
-    return { 'success': update_model(model_id, transforms, parameters) }
+    return { 'success': update_model(model_id, transforms, parameters, symbol, frequency) }
 
 
 @app.route('/remove-model/<model_id>', methods=['DELETE'])
@@ -410,10 +416,16 @@ def account_tsapi_callback(token):
 @auth.login_required
 def get_web_alert():
     username = auth.current_user()['username']
-    from database import get_alert_by_username, pop_user_alerts
-    alert = get_alert_by_username(username)
-    if alert is None:
+    user_id = auth.current_user()['user_id']
+    user_email = auth.current_user()['email']
+    refresh_token = auth.current_user()['refresh_token']
+    email_alert = auth.current_user()['email_alert']
+
+    from autoupdate import autoupdate
+    result_html = autoupdate(user_id, username, refresh_token, user_email, email_alert)
+    if result_html is None:
         return '', 204
-    pop_user_alerts(alert['alert_id'])
-    return alert
+    return {
+        'alert_content': result_html
+    }
 # app.run()
