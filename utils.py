@@ -26,25 +26,32 @@ def convert_frequency(frequency: str):
 def parse_prices(lines: str):
   data = []
   for line in lines.splitlines():
-    if 'END' in line or line is None or line == "":
+    d = parse_prices_line(line)
+    if d is None:
       break
-    try:
-      prices = json.loads(line)
-    except:
-      break
-    ts = float(prices['TimeStamp'].replace('/Date(', '').replace(')/', '')) / 1000
-    if ts < 0:
-      continue
-    dt = datetime.datetime.fromtimestamp(ts)
-    data.append([
-      dt.strftime('%m/%d/%Y'),
-      dt.strftime('%H:%M:%S'),
-      float(prices['Open']),
-      float(prices['High']),
-      float(prices['Low']),
-      float(prices['Close']),
-      float(prices['TotalVolume']),
-      float(prices['OpenInterest']),
-    ])
+    data.append(d)
   df = pandas.DataFrame(data, columns = ['Date', 'Time', 'Open', 'High', 'Low', 'Close', 'Vol', 'OI'])
   return df
+
+
+def parse_prices_line(line: str):
+  if 'END' in line or line is None or line == "":
+    return None
+  try:
+    prices = json.loads(line)
+  except:
+    return None
+  ts = float(prices['TimeStamp'].replace('/Date(', '').replace(')/', '')) / 1000
+  if ts < 0:
+    return None
+  dt = datetime.datetime.fromtimestamp(ts)
+  return [
+    dt.strftime('%m/%d/%Y'),
+    dt.strftime('%H:%M:%S'),
+    float(prices['Open']),
+    float(prices['High']),
+    float(prices['Low']),
+    float(prices['Close']),
+    float(prices['TotalVolume']),
+    float(prices['OpenInterest']),
+  ]
