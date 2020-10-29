@@ -384,8 +384,6 @@ def upload_input_data(has_index):
 def get_input_data(file_id):
     rd = redis.from_url(os.environ.get("REDIS_URL"))
     file = rd.get(file_id)
-    if file is not None:
-        print('rd file = ' + file)
     if file is None or file == 'waiting':
         return {'file_id': file_id, 'status': 'waiting'}
     elif file == 'failed':
