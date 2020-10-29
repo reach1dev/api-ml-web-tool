@@ -42,7 +42,7 @@ def get_input_file(file_id: str, refresh_token = None):
     if 'TSData_' in file_id:
         rd = redis.from_url(os.environ.get("REDIS_URL"))
         rd_file = rd.get(file_id)
-        if rd_file is not None:
+        if rd_file is not None and rd_file != 'failed' and rd_file != 'waiting':
             df = pd.read_msgpack(rd_file)
         elif refresh_token is not None:
             file_params = file_id.split('_')
@@ -58,6 +58,7 @@ def get_input_file(file_id: str, refresh_token = None):
             def run_job(access_token, symbol, frequency, start_date):
                 try:
                     df = load_ts_prices(access_token, symbol, frequency, start_date)
+                    rd.set(file_id, 'waiting')
                     if df is None:
                         return None
                     rd.set(file_id, df.to_msgpack(compress='zlib'))
@@ -383,7 +384,7 @@ def upload_input_data(has_index):
 def get_input_data(file_id):
     rd = redis.from_url(os.environ.get("REDIS_URL"))
     file = rd.get(file_id)
-    if file == 'failed':
+    if file == 'waiting':
         return {'file_id': file_id, 'status': 'waiting'}
     elif file is not None:
         df = pd.read_msgpack(file)
