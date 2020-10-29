@@ -384,8 +384,11 @@ def upload_input_data(has_index):
 def get_input_data(file_id):
     rd = redis.from_url(os.environ.get("REDIS_URL"))
     file = rd.get(file_id)
+    print('rd file = ' + file)
     if file == 'waiting':
         return {'file_id': file_id, 'status': 'waiting'}
+    elif file == 'failed':
+        return {'file_id': file_id, 'status': 'failed'}
     elif file is not None:
         df = pd.read_msgpack(file)
         return json.dumps({'file_id': file_id, 'status': 'success', 'index': df.index.name, 'columns': df.columns.values, 'sample_count': len(df)}, default=default), 200
