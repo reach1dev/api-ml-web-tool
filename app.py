@@ -46,14 +46,15 @@ def get_input_file(file_id: str, refresh_token = None):
             df = pd.read_msgpack(rd_file)
         elif refresh_token is not None:
             file_params = file_id.split('_')
-            if len(file_params) < 3:
+            if len(file_params) < 4:
                 return None
             symbol = file_params[1]
             frequency = file_params[2]
+            start_date = file_params[3]
             from tsapi import load_ts_prices
             from tsapi import get_access_token
             access_token = get_access_token(refresh_token)
-            df = load_ts_prices(access_token, symbol, frequency)
+            df = load_ts_prices(access_token, symbol, frequency, start_date)
             if df is None:
                 return None
             rd.set(file_id, df.to_msgpack(compress='zlib'))
@@ -131,10 +132,12 @@ def save_model_to_db():
     parameters = request.json['parameters']
     model_name = request.json['modelName']
     input_file_id = request.json['inputFileId']
-    symbol = input_file_id.split("_")[1]
-    frequency = input_file_id.split("_")[2]
+    file_params = input_file_id.split("_")
+    symbol = file_params[1]
+    frequency = file_params[2]
+    start_date = file_params[3] if len(file_params) > 3 else '01-01-2010'
     from database import save_model
-    return { 'success': save_model(auth.current_user()['user_id'], model_name, symbol, frequency, transforms, parameters) }
+    return { 'success': save_model(auth.current_user()['user_id'], model_name, symbol, frequency, start_date, transforms, parameters) }
 
 
 @app.route('/update-model/<model_id>', methods=['PUT'])
@@ -364,6 +367,8 @@ def upload_input_data(has_index):
 @auth.login_required
 def select_input_data(file_id):
     user = auth.current_user()
+    if user['refresh_token'] is None or user['refresh_token'] == '':
+        return '', 403
     df = get_input_file(file_id, refresh_token=user['refresh_token'])
     return json.dumps({'file_id': file_id, 'index': 'Date', 'columns': df.columns.values[1:], 'sample_count': len(df)}, default=default), 200
 
@@ -422,6 +427,9 @@ def get_web_alert():
     user_email = auth.current_user()['email']
     refresh_token = auth.current_user()['refresh_token']
     email_alert = auth.current_user()['email_alert']
+
+    if refresh_token is None or refresh_token == '':
+        return '', 403
 
     from autoupdate import autoupdate
     status, result = autoupdate(user_id, username, refresh_token, user_email, email_alert)
