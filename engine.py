@@ -282,7 +282,7 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
       y_test = y_test.fillna(0).astype('int').astype('category')
     
     for idx, col in enumerate(parameters['features']):
-      if col == label and parameters['inputFilters'][idx] == False:
+      if col == label and parameters['inputFilters'][idx] is False:
         del X_train[label]
         del X_test[label]
         break

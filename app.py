@@ -405,7 +405,7 @@ def select_input_data(file_id):
     df = get_input_file(file_id, refresh_token=user['refresh_token'])
     if df is None:
         return '', 403
-    if df == False:
+    if df is False:
         return {'file_id': file_id, 'status': 'waiting'}
     return json.dumps({'file_id': file_id, 'status': 'success', 'index': 'Date', 'columns': df.columns.values[1:], 'sample_count': len(df)}, default=default), 200
 

@@ -37,6 +37,8 @@ def parse_prices(lines: str):
 def parse_prices_line(line: str):
   if 'END' in line:
     return True
+  if line is None or line == '':
+    return False
   try:
     prices = json.loads(line)
   except:
