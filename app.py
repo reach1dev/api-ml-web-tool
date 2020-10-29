@@ -174,8 +174,10 @@ def optimize(file_id):
 def auth_login():
     post_data = request.get_json()
     from database import check_user
+    from database import clear_user_token
     user = check_user(post_data['username'], post_data['password'])
     if user is not None and (user['email'] is not None and user['email'] != ''):
+        clear_user_token(post_data['username'])
         token = jwt.encode({
             'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'username': post_data['username']
