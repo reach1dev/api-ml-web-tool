@@ -161,8 +161,9 @@ def update_model_to_db(model_id):
     transforms = request.json['transforms']
     parameters = request.json['parameters']
     input_file_id = request.json['inputFileId']
-    symbol = input_file_id.split("_")[1]
-    frequency = input_file_id.split("_")[2]
+    file_params = input_file_id.split("_")
+    symbol = file_params[1]
+    frequency = file_params[2]
     start_date = file_params[3] if len(file_params) > 3 else '01-01-2010'
     from database import update_model
     return { 'success': update_model(model_id, transforms, parameters, symbol, frequency, start_date) }
@@ -392,7 +393,7 @@ def get_input_data(file_id):
         return {'file_id': file_id, 'status': 'failed'}
     elif file is not None:
         df = pd.read_msgpack(file)
-        return json.dumps({'file_id': file_id, 'status': 'success', 'index': df.index.name, 'columns': df.columns.values, 'sample_count': len(df)}, default=default), 200
+        return json.dumps({'file_id': file_id, 'status': 'success', 'index': 'Date', 'columns': df.columns.values[1:], 'sample_count': len(df)}, default=default), 200
     return {'file_id': file_id, 'status': 'failed'}
 
 
