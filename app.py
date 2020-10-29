@@ -42,7 +42,7 @@ def get_input_file(file_id: str, refresh_token = None):
     if 'TSData_' in file_id:
         rd = redis.from_url(os.environ.get("REDIS_URL"))
         rd_file = rd.get(file_id)
-        if rd_file is not None and rd_file != 'failed' and rd_file != 'waiting':
+        if rd_file is not None and rd_file != b'failed' and rd_file != b'waiting':
             df = pd.read_msgpack(rd_file)
         elif refresh_token is not None:
             file_params = file_id.split('_')
