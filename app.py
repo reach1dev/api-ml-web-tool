@@ -57,10 +57,16 @@ def get_input_file(file_id: str, refresh_token = None):
 
             rd.set(file_id, 'waiting')
             def run_job(rd, file_id, access_token, symbol, frequency, start_date):            
-                df = load_ts_prices(access_token, symbol, frequency, start_date)
-                if df is None:
-                    return None
-                rd.set(file_id, df.to_msgpack(compress='zlib'))
+                try:
+                    df = load_ts_prices(access_token, symbol, frequency, start_date)
+                    if df is None:
+                        rd.set(file_id, 'failed')
+                        return None
+                    rd.set(file_id, df.to_msgpack(compress='zlib'))
+                except Exception as e:
+                    print(e)
+                    rd.set(file_id, 'failed')
+
 
             thread = threading.Thread(target=run_job, args=[rd, file_id, access_token, symbol, frequency, start_date])
             thread.start()
