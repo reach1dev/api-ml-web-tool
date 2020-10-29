@@ -54,10 +54,20 @@ def get_input_file(file_id: str, refresh_token = None):
             from tsapi import load_ts_prices
             from tsapi import get_access_token
             access_token = get_access_token(refresh_token)
-            df = load_ts_prices(access_token, symbol, frequency, start_date)
-            if df is None:
-                return None
-            rd.set(file_id, df.to_msgpack(compress='zlib'))
+
+            def run_job(access_token, symbol, frequency, start_date):
+                try:
+                    df = load_ts_prices(access_token, symbol, frequency, start_date)
+                    if df is None:
+                        return None
+                    rd.set(file_id, df.to_msgpack(compress='zlib'))
+                except Exception as e:
+                    rd.set(file_id, 'failed')
+                    print(e)
+
+            thread = threading.Thread(target=run_job, args=[access_token, symbol, frequency, start_date])
+            thread.start()
+            return file_id
         else:
             return None
     else:
@@ -93,6 +103,8 @@ def verify_token(token):
 @app.route('/get-transform-data/<file_id>', methods=['POST'])
 def get_transform_data(file_id):
     df = get_input_file(file_id)
+    if df is None or df is file_id:
+        return '', 204
 
     transforms = request.json['transforms']
     output_data = None
@@ -148,8 +160,9 @@ def update_model_to_db(model_id):
     input_file_id = request.json['inputFileId']
     symbol = input_file_id.split("_")[1]
     frequency = input_file_id.split("_")[2]
+    start_date = file_params[3] if len(file_params) > 3 else '01-01-2010'
     from database import update_model
-    return { 'success': update_model(model_id, transforms, parameters, symbol, frequency) }
+    return { 'success': update_model(model_id, transforms, parameters, symbol, frequency, start_date) }
 
 
 @app.route('/remove-model/<model_id>', methods=['DELETE'])
@@ -267,6 +280,8 @@ def account_upload():
 
 def inter_train(file_id, optimize = False):
     input_file = get_input_file(file_id)
+    if input_file is None or input_file is file_id:
+        return '', 404
     return inter_train_with_file(input_file, optimize, request.json['transforms'], request.json['parameters'])
 
 
@@ -363,6 +378,19 @@ def upload_input_data(has_index):
         return '', 400
 
 
+@app.route('/get-input-data/<file_id>', methods=['POST'])
+@auth.login_required
+def get_input_data(file_id):
+    rd = redis.from_url(os.environ.get("REDIS_URL"))
+    file = rd.get(file_id)
+    if file == 'failed':
+        return {'file_id': file_id, 'status': 'waiting'}
+    elif file is not None:
+        df = pd.read_msgpack(file)
+        return json.dumps({'file_id': file_id, 'status': 'success', 'index': df.index.name, 'columns': df.columns.values, 'sample_count': len(df)}, default=default), 200
+    return {'file_id': file_id, 'status': 'failed'}
+
+
 @app.route('/select-input-data/<file_id>', methods=['POST'])
 @auth.login_required
 def select_input_data(file_id):
@@ -370,7 +398,11 @@ def select_input_data(file_id):
     if user['refresh_token'] is None or user['refresh_token'] == '':
         return '', 403
     df = get_input_file(file_id, refresh_token=user['refresh_token'])
-    return json.dumps({'file_id': file_id, 'index': 'Date', 'columns': df.columns.values[1:], 'sample_count': len(df)}, default=default), 200
+    if df is None:
+        return '', 403
+    if df == file_id:
+        return {'file_id': file_id, 'status': 'waiting'}
+    return json.dumps({'file_id': file_id, 'status': 'success', 'index': 'Date', 'columns': df.columns.values[1:], 'sample_count': len(df)}, default=default), 200
 
 
 @app.route('/test-autoupdate', methods=['GET'])
