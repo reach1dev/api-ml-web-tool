@@ -55,10 +55,10 @@ def get_input_file(file_id: str, refresh_token = None):
             from tsapi import get_access_token
             access_token = get_access_token(refresh_token)
 
+            rd.set(file_id, 'waiting')
             def run_job(access_token, symbol, frequency, start_date):
-                try:
+                try:                    
                     df = load_ts_prices(access_token, symbol, frequency, start_date)
-                    rd.set(file_id, 'waiting')
                     if df is None:
                         return None
                     rd.set(file_id, df.to_msgpack(compress='zlib'))
@@ -68,7 +68,7 @@ def get_input_file(file_id: str, refresh_token = None):
 
             thread = threading.Thread(target=run_job, args=[access_token, symbol, frequency, start_date])
             thread.start()
-            return file_id
+            return False
         else:
             return None
     else:
@@ -104,7 +104,7 @@ def verify_token(token):
 @app.route('/get-transform-data/<file_id>', methods=['POST'])
 def get_transform_data(file_id):
     df = get_input_file(file_id)
-    if df is None or df is file_id:
+    if df is None or df is False:
         return '', 204
 
     transforms = request.json['transforms']
@@ -281,7 +281,7 @@ def account_upload():
 
 def inter_train(file_id, optimize = False):
     input_file = get_input_file(file_id)
-    if input_file is None or input_file is file_id:
+    if input_file is None or input_file is False:
         return '', 404
     return inter_train_with_file(input_file, optimize, request.json['transforms'], request.json['parameters'])
 
@@ -403,7 +403,7 @@ def select_input_data(file_id):
     df = get_input_file(file_id, refresh_token=user['refresh_token'])
     if df is None:
         return '', 403
-    if df == file_id:
+    if df == False:
         return {'file_id': file_id, 'status': 'waiting'}
     return json.dumps({'file_id': file_id, 'status': 'success', 'index': 'Date', 'columns': df.columns.values[1:], 'sample_count': len(df)}, default=default), 200
 
