@@ -25,11 +25,14 @@ def convert_frequency(frequency: str):
 
 def parse_prices(lines: str):
   data = []
-  for line in lines.splitlines():
-    d = parse_prices_line(line)
-    if d is None:
-      break
-    data.append(d)
+  try:
+    for line in lines.splitlines():
+      d = parse_prices_line(line)
+      if d is None:
+        break
+      data.append(d)
+  except:
+    pass
   df = pandas.DataFrame(data, columns = ['Date', 'Time', 'Open', 'High', 'Low', 'Close', 'Vol', 'OI'])
   return df
 
