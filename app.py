@@ -380,9 +380,9 @@ def upload_input_data(has_index):
 def get_input_data(file_id):
     rd = redis.from_url(os.environ.get("REDIS_URL"))
     file = rd.get(file_id)
-    if file is None or file == 'waiting':
+    if file is None or file == b'waiting':
         return {'file_id': file_id, 'status': 'waiting'}
-    elif file == 'failed':
+    elif file == b'failed':
         return {'file_id': file_id, 'status': 'failed'}
     elif file is not None:
         df = pd.read_msgpack(file)
