@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import json
 import sys
+import traceback
 from flask_cors import CORS, cross_origin
 from sklearn import preprocessing
 from sklearn.cluster import KMeans
@@ -481,7 +482,7 @@ def get_web_alert():
             return result, 204
         else:
             return "unknown error", 204
-    except Exception as e:
-        print(e)
+    except:
+        traceback.print_exc()
         return "exception in autoupdate", 204
 # app.run()
