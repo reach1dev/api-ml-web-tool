@@ -318,7 +318,7 @@ def inter_train_with_file(input_file, optimize, transforms, parameters):
                     np.save(f, features)
                 f.close()
         except Exception as e:
-            print(e)
+            traceback.print_exc()
             with open('tmp/' + res_file_id + '.err', 'w') as f:
                 f.writelines([repr(e)])
                 f.close()
