@@ -470,14 +470,18 @@ def get_web_alert():
         return '', 403
 
     from autoupdate import autoupdate
-    status, result = autoupdate(user_id, username, refresh_token, user_email, email_alert)
-    if status == 'success':
-        return {
-            'alert_content': result
-        }
-    elif status == 'error':
-        print (result)
-        return result, 204
-    else:
-        return "unknown error", 204
+    try:
+        status, result = autoupdate(user_id, username, refresh_token, user_email, email_alert)
+        if status == 'success':
+            return {
+                'alert_content': result
+            }
+        elif status == 'error':
+            print (result)
+            return result, 204
+        else:
+            return "unknown error", 204
+    except Exception as e:
+        print(e)
+        return "exception in autoupdate", 204
 # app.run()
