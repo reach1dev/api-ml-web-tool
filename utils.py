@@ -29,6 +29,8 @@ def parse_prices(lines: str):
     for line in lines.splitlines():
       d = parse_prices_line(line)
       if d is None:
+        continue
+      if len(d) == 0:
         break
       data.append(d)
   except:
@@ -39,16 +41,16 @@ def parse_prices(lines: str):
 
 def parse_prices_line(line: str):
   if 'END' in line:
-    return True
+    return []
   if line is None or line == '':
-    return False
+    return None
   try:
     prices = json.loads(line)
   except:
-    return False
+    return None
   ts = float(prices['TimeStamp'].replace('/Date(', '').replace(')/', '')) / 1000
   if ts < 0:
-    return False
+    return None
   dt = datetime.datetime.fromtimestamp(ts)
   return [
     dt.strftime('%m/%d/%Y'),
