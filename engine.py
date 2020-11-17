@@ -304,7 +304,7 @@ def knn_classifier(input_file, transforms, parameters, algorithmType):
     date_index = date_index.dropna()
     res = [np.array(date_index) ]
     
-    y_test = y_test.fillna(0).to_numpy()
+    y_test = y_test.dropna().to_numpy()
     # p_test = p_test
     res.append(y_test)
     res.append(p_test)
