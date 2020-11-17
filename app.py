@@ -5,7 +5,6 @@ import pandas as pd
 import numpy as np
 import json
 import sys
-import traceback
 from flask_cors import CORS, cross_origin
 from sklearn import preprocessing
 from sklearn.cluster import KMeans
