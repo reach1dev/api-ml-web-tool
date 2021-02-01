@@ -31,7 +31,6 @@ from sklearn.metrics import explained_variance_score
 from sklearn.metrics import max_error
 from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import confusion_matrix
-from constants import get_x_unit
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import ParameterGrid
 from kneed import KneeLocator
