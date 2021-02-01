@@ -3,7 +3,6 @@ import pandas
 import datetime
 import redis
 import os
-import smtplib
 import json
 import traceback
 from email.mime.multipart import MIMEMultipart
