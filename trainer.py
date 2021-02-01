@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 
+
 def train_and_test(df, transforms, parameters):
   X = df.iloc[:,1:-1].values
   y = df.iloc[:, -1].values

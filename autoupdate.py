@@ -7,10 +7,8 @@ import json
 import traceback
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
-
 from database import load_models
 from utils import convert_frequency
 from tsapi import load_ts_prices
