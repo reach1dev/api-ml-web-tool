@@ -2,6 +2,7 @@ import pandas
 import datetime
 import json
 
+
 def convert_frequency(frequency: str):
   unit = "Minute"
   interval = 1
