@@ -4,3 +4,4 @@
 tmp
 sendgrid.env
 constants.py
+.vscode
