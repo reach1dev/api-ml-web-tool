@@ -32,7 +32,7 @@ def get_access_token(refresh_token):
   res = requests.post(ts_api_auth_url, data = {
     "grant_type": "refresh_token",
     "client_id": ts_client_id,
-    "redirect_uri": "https://ml-web-tool.herokuapp.com/",
+    "redirect_uri": "http://ec2-52-201-19-122.compute-1.amazonaws.com:3002/app/ml-app", #https://ml-web-tool.herokuapp.com/
     "client_secret": ts_client_secret,
     "refresh_token": refresh_token,
     "response_type": "token"
